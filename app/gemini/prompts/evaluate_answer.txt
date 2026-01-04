@@ -1,0 +1,21 @@
+Evaluate the following interview answer.
+
+QUESTION:
+{question}
+
+USER ANSWER:
+{answer}
+
+RESUME:
+{resume}
+
+JOB DESCRIPTION:
+{jd}
+
+Provide:
+- Score (0–10)
+- Strengths
+- Weaknesses
+- Suggested improvements
+
+Return ONLY valid JSON. No commentary. No markdown.

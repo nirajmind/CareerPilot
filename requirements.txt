@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+python-dotenv
+pydantic
+streamlit
+python-docx
+pdfplumber
+plotly
+streamlit_javascript
+redis
+pymongo
+google-genai
+pytest
+fakeredis

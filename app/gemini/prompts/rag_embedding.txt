@@ -1,0 +1,10 @@
+Generate a semantic embedding vector for the following text.
+
+TEXT:
+{query}
+
+Instructions:
+- Focus on meaning, not formatting.
+- Ignore punctuation, casing, and stopwords.
+- Capture the core semantic intent of the text.
+- Return only the embedding vector, no explanation.

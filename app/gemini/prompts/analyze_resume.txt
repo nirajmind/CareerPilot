@@ -1,0 +1,13 @@
+Analyze the following resume and job description.
+Provide a structured summary including:
+- Skill match
+- Gaps
+- Recommendations
+
+RESUME:
+{resume}
+
+JOB DESCRIPTION:
+{jd}
+
+Return ONLY valid JSON. No commentary. No markdown.

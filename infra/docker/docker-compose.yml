@@ -1,0 +1,74 @@
+services:
+
+  api:
+    build:
+      context: ../../
+      dockerfile: Dockerfile.api
+    container_name: careerpilot-api
+    depends_on:
+      - mongo
+      - redis
+    environment:
+      MONGO_URI: mongodb://mongo:27017/careerpilot
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    ports:
+      - "8000:8000"
+    networks:
+      - careerpilot-net
+
+  ui:
+    build:
+      context: ../../
+      dockerfile: Dockerfile.ui
+    container_name: careerpilot-ui
+    depends_on:
+      - api
+    ports:
+      - "8501:8501"
+    networks:
+      - careerpilot-net
+
+  agent:
+    build:
+      context: ../../
+      dockerfile: Dockerfile.agent
+    container_name: careerpilot-agent
+    depends_on:
+      - mongo
+      - redis
+    environment:
+      MONGO_URI: mongodb://mongo:27017/careerpilot
+      REDIS_HOST: redis
+    networks:
+      - careerpilot-net
+
+  mongo:
+    image: mongo:6
+    container_name: mongo
+    restart: always
+    volumes:
+      - ../../data/mongo:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    ports:
+      - "27017:27017"
+    networks:
+      - careerpilot-net
+
+  redis:
+    image: redis:7
+    container_name: redis
+    restart: always
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    volumes:
+      - ../../data/redis:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    ports:
+      - "6379:6379"
+    networks:
+      - careerpilot-net
+
+networks:
+  careerpilot-net:
+    driver: bridge
