@@ -75,3 +75,7 @@ class EvaluateAnswerResponse(BaseModel):
     weaknesses: List[str]
     suggestion: str
     ideal_answer: str
+
+class IngestRequest(BaseModel):
+    text: str
+    source: Optional[str] = "manual"
