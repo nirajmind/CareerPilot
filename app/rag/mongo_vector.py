@@ -1,5 +1,5 @@
+import asyncio
 from pymongo import MongoClient
-from pymongo.collection import Collection
 from typing import List, Dict
 import os
 
@@ -9,19 +9,18 @@ COLLECTION_NAME = "vectors"
 
 client = MongoClient(MONGO_URI)
 db = client[DB_NAME]
-collection: Collection = db[COLLECTION_NAME]
+collection = db[COLLECTION_NAME]
 
-
-def upsert_document(doc_id: str, text: str, embedding: List[float], metadata: Dict = None):
-    """Insert or update a document with its embedding."""
-    payload = {
-        "_id": doc_id,
-        "text": text,
-        "embedding": embedding,
-        "metadata": metadata or {}
-    }
-    collection.update_one({"_id": doc_id}, {"$set": payload}, upsert=True)
-
+async def upsert(document: Dict):
+    """Insert or update a document with its embedding asynchronously."""
+    doc_id = document.get("text")
+    def sync_upsert():
+        return collection.update_one(
+            {"_id": doc_id},
+            {"$set": document},
+            upsert=True
+        )
+    return await asyncio.to_thread(sync_upsert)
 
 def search(query_embedding: List[float], top_k: int = 5):
     """Perform vector search using cosine similarity."""
@@ -43,5 +42,4 @@ def search(query_embedding: List[float], top_k: int = 5):
             }
         }
     ]
-
     return list(collection.aggregate(pipeline))

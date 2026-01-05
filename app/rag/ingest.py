@@ -1,6 +1,6 @@
 import os
 import uuid
-from .mongo_vector import upsert_document
+from .mongo_vector import upsert
 from app.gemini.service import GeminiService
 
 gemini_service = GeminiService()
@@ -10,12 +10,12 @@ def ingest_text(text: str, metadata: dict = None):
     doc_id = str(uuid.uuid4())
     embedding = gemini_service.embed(text)
 
-    upsert_document(
-        doc_id=doc_id,
-        text=text,
-        embedding=embedding,
-        metadata=metadata
-    )
+    upsert({
+        "_id": doc_id,
+        "text": text,
+        "embedding": embedding,
+        "metadata": metadata
+    })
 
     return doc_id
 

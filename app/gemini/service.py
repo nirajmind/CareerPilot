@@ -300,16 +300,14 @@ class GeminiService:
         Async generator that streams Gemini output chunk-by-chunk.
         """
         try:
-            stream = self.client.models.generate_content_stream(
+            # Correctly await the async stream method
+            async_stream = await self.client.models.generate_content_stream(
                 model=self.chat_model,
                 contents=prompt,
             )
 
-            # Iterate over streaming chunks in a thread executor
-            loop = asyncio.get_event_loop()
-            iterator = await loop.run_in_executor(None, lambda: stream)
-
-            for chunk in iterator:
+            # Correctly iterate over the async generator
+            async for chunk in async_stream:
                 text = chunk.text or ""
                 if self.logger:
                     self.logger.debug({ "event": "gemini_stream_chunk", "correlation_id": cid, "chunk_preview": text[:50], })
@@ -326,8 +324,17 @@ class GeminiService:
     async def stream_resume_analysis(self, resume: str, jd: str):
         prompt_template = await self.prompts.get("analyze_resume")
         prompt = prompt_template.format(resume=resume, jd=jd)
-        async for chunk in self.stream_answer(prompt):
-            yield chunk
+        
+        try:
+            async_stream = await self.client.models.generate_content_stream(
+                model=self.chat_model,
+                contents=prompt,
+            )
+            async for chunk in async_stream:
+                yield chunk.text or ""
+        except Exception as e:
+            logger.error(f"Error streaming resume analysis: {e}")
+            yield f"[ERROR] {str(e)}"
 
     async def stream_evaluation(self, question: str, answer: str, resume: str, jd: str):
         prompt_template = await self.prompts.get("evaluate_answer")
@@ -337,7 +344,15 @@ class GeminiService:
             resume=resume,
             jd=jd,
         )
-        async for chunk in self.stream_answer(prompt):
-            yield chunk
+        try:
+            async_stream = await self.client.models.generate_content_stream(
+                model=self.chat_model,
+                contents=prompt,
+            )
+            async for chunk in async_stream:
+                yield chunk.text or ""
+        except Exception as e:
+            logger.error(f"Error streaming evaluation: {e}")
+            yield f"[ERROR] {str(e)}"
         
         
