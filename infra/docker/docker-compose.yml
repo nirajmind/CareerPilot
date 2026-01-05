@@ -17,6 +17,11 @@ services:
       - "8000:8000"
     networks:
       - careerpilot-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"  
 
   ui:
     build:
@@ -25,10 +30,17 @@ services:
     container_name: careerpilot-ui
     depends_on:
       - api
+    environment:
+      BACKEND_URL: http://api:8000
     ports:
       - "8501:8501"
     networks:
       - careerpilot-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"  
 
   agent:
     build:
@@ -43,6 +55,11 @@ services:
       REDIS_HOST: redis
     networks:
       - careerpilot-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"  
 
   mongo:
     image: mongo:6
@@ -55,6 +72,11 @@ services:
       - "27017:27017"
     networks:
       - careerpilot-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"  
 
   redis:
     image: redis:7
@@ -68,6 +90,11 @@ services:
       - "6379:6379"
     networks:
       - careerpilot-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"  
 
 networks:
   careerpilot-net:

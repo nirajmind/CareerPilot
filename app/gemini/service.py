@@ -9,24 +9,24 @@ from app.gemini.prompt_loader import PromptLoader
 import uuid
 import time
 
+from app.utils.logger import setup_logger
+logger = setup_logger()
+
 class GeminiService:
-    def __init__( 
-            self, 
-            redis_client=None, 
-            logger=None, 
-            embedding_ttl_seconds: int = 60 * 60 * 24 * 30, # 30 days 
-            ): 
-         api_key = os.getenv("GEMINI_API_KEY") 
-         if not api_key: 
-            raise ValueError("GEMINI_API_KEY is missing") 
-         
-         self.client = Client(api_key=api_key) 
-         self.embedding_model = "models/text-embedding-004" 
-         self.chat_model = "models/gemini-2.0-flash" 
-         self.redis = redis_client 
-         self.logger = logger 
-         self.emb_ttl = embedding_ttl_seconds 
-         self.prompts = PromptLoader(redis_client)
+    def __init__( self, redis_client=None, logger=None, 
+                 embedding_ttl_seconds: int = 60 * 60 * 24 * 30, # 30 days 
+                 ):
+             api_key = os.getenv("GEMINI_API_KEY") 
+             if not api_key: 
+                 raise ValueError("GEMINI_API_KEY is missing") 
+             # Async Gemini client 
+             self.client = Client(api_key=api_key).aio 
+             self.embedding_model = "models/text-embedding-004" 
+             self.chat_model = "models/gemini-2.0-flash" 
+             self.redis = redis_client 
+             self.logger = logger or logger
+             self.emb_ttl = embedding_ttl_seconds 
+             self.prompts = PromptLoader(redis_client)
 
     def _new_correlation_id(self):
         return str(uuid.uuid4())
@@ -142,12 +142,14 @@ class GeminiService:
     # RESUME + JD ANALYSIS
     # ---------------------------------------------------------
     async def analyze_resume_and_jd(self, resume: str, jd: str) -> str:
+        logger.info(f"Starting resume and JD analysis with prompt.")
         prompt_template = await self.prompts.get("analyze_resume")
-
-        prompt = prompt_template.format(
-            resume=resume,
-            jd=jd
+        logger.info(
+            f"Loaded prompt template for resume analysis. "
+            f"prompt_preview={prompt_template[:100]}"
         )
+
+        prompt = prompt_template.replace("{resume}", resume).replace("{jd}", jd)
 
         resp = await self._log_and_time(
             "generate_content_resume_analysis",
@@ -155,8 +157,9 @@ class GeminiService:
             model=self.chat_model,
             contents=prompt,
         )
-
-        return self.safe_json_parse(resp.text)
+        logger.info(f"The raw response from gemini - {resp}")
+        text = resp.candidates[0].content.parts[0].text
+        return self.safe_json_parse(text)
 
     # ---------------------------------------------------------
     # ANSWER EVALUATION
@@ -202,7 +205,7 @@ class GeminiService:
         """
         for attempt in range(1, retries + 1):
             try:
-                return await self._run(func, *args, **kwargs)
+                return await func(*args, **kwargs)
 
             except Exception as e:
                 # Retry only on transient errors
@@ -242,19 +245,20 @@ class GeminiService:
         - Repairs common formatting issues
         - Logs failures
         """
-
         # 1. Direct strict parse
         try:
             return json.loads(text)
         except Exception:
+            logger.error(f"[GeminiService] Failed to parse JSON from response - {text}")
             pass
 
         # 2. Remove markdown fences
-        cleaned = re.sub(r"```json|```", "", text).strip()
-
+        cleaned = re.sub(r"```json\s*|```\s*", "", text, flags=re.MULTILINE).strip()
+        logger.info(f"[GeminiService] Parsing JSON from cleaned response - {cleaned}")
         try:
             return json.loads(cleaned)
         except Exception:
+            logger.error(f"[GeminiService] Failed to parse JSON from cleaned response - {cleaned}")
             pass
 
         # 3. Extract JSON substring using regex
@@ -263,6 +267,7 @@ class GeminiService:
             try:
                 return json.loads(json_match.group(0))
             except Exception:
+                logger.error(f"[GeminiService] Failed to parse JSON from match response - {json_match.group(0)}")
                 pass
 
         # 4. Attempt common repairs
@@ -271,16 +276,19 @@ class GeminiService:
             .replace(",}", "}")
             .replace(",]", "]")
         )
-
+        logger.info(f"[GeminiService] Parsing JSON from repaired response - {repaired}")
         try:
             return json.loads(repaired)
-        except Exception:
+        except Exception as e:
+            logger.error(f"[GeminiService] Failed to parse JSON: {e}")
+            logger.error(f"[GeminiService] Failed to parse JSON from response - {repaired}")
             pass
 
         # 5. Final fallback: return raw text
         if self.logger:
-            self.logger.warning("[GeminiService] Failed to parse JSON. Returning raw text.")
+            self.logger.warning(f"[GeminiService] Failed to parse JSON. Returning raw text.")
 
+        logger.info(f"[GeminiService] Parsed json from response - {text}")
         return {"raw_text": text}
     
     async def stream_answer(self, prompt: str):
