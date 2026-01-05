@@ -1,0 +1,41 @@
+```mermaid
+sequenceDiagram
+    participant User
+    participant StreamlitUI as Streamlit UI
+    participant FastAPI as FastAPI Backend
+    participant Agent as LangGraph Agent
+    participant Gemini as Gemini API
+    participant RAG as RAG Pipeline
+    participant MongoDB as MongoDB Vector Search
+    participant Redis as Redis Cache
+
+    User->>+StreamlitUI: 1. Upload Resume & JD
+    StreamlitUI->>+FastAPI: 2. POST /analyze (async)
+    
+    FastAPI->>+Agent: 3. Start Analysis Workflow
+    
+    Agent->>+Redis: 4. Check for cached result
+    Redis-->>-Agent: 5. Return cached data or nil
+    
+    alt Cache Hit
+        Note over Agent: 6a. Use cached analysis
+    else Cache Miss
+        Agent->>+Gemini: 6b. Analyze Resume & JD
+        Gemini-->>-Agent: 7. Structured JSON output
+        
+        Agent->>+RAG: 8. Ground analysis with RAG
+        RAG->>+MongoDB: 9. Perform vector search
+        MongoDB-->>-RAG: 10. Return relevant documents
+        RAG-->>-Agent: 11. Return grounded context
+        
+        Agent->>Agent: 12. Generate FitGraph & Insights
+        
+        Agent->>+Redis: 13. Cache the final result
+        Redis-->>-Agent: 14. Confirm cache write
+        Note over Agent: 15. Use newly generated analysis
+    end
+
+    Agent-->>-FastAPI: 16. Return final analysis to API
+    FastAPI-->>-StreamlitUI: 17. Stream final response
+    StreamlitUI-->>-User: 18. Display FitGraph & Insights
+```
