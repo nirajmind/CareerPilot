@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent
+  namespace: careerpilot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agent
+  template:
+    metadata:
+      labels:
+        app: agent
+    spec:
+      containers:
+      - name: agent
+        image: your-docker-repo/careerpilot-agent:latest # IMPORTANT: Replace with your actual image path
+        env:
+        - name: MONGO_URI
+          value: "mongodb://mongo:27017/careerpilot"
+        - name: REDIS_HOST
+          value: "redis"
