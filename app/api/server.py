@@ -39,11 +39,20 @@ def health_check():
 
 @app.post("/analyze", response_model=AnalysisResponse)
 async def analyze(request: AnalysisRequest):
+    logger.info(f"AnalysisRequest JSON: {request.model_dump_json()}")
+    logger.info(
+        f"Received analysis request with resume and jd - "
+        f"resume_preview={str(request.resume_text)[:100]}, "
+        f"jd_preview={str(request.jd_text)[:100]}"
+        )
     try:
         raw = await gemini.analyze_resume_and_jd(request.resume_text, request.jd_text)
+        logger.info(f"Analysis complete and the response is ready to be sent back to the client."
+                    f"raw_preview={raw}")
         return raw
     except Exception as e:
         # Later: log this, add better error struct
+        logger.error(f"Analysis failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     
 @app.post("/evaluate_answer", response_model=EvaluateAnswerResponse)
