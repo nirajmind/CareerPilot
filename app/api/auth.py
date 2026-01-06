@@ -9,7 +9,11 @@ from app.api.schemas import TokenData
 from app.utils.mongo_handler import mongo_handler
 
 # --- Configuration ---
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "a_super_secret_key_for_development")
+try:
+    SECRET_KEY = os.environ["JWT_SECRET_KEY"]
+except KeyError:
+    raise RuntimeError("JWT_SECRET_KEY is not set in the environment.")
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 

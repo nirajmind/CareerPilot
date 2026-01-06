@@ -46,20 +46,31 @@ def render_auth_page():
 
 def login(username, password):
     try:
-        response = requests.post(
+        # Step 1: Get the token
+        token_response = requests.post(
             f"{BACKEND_URL}/auth/token",
             data={"username": username, "password": password}
         )
-        if response.status_code == 200:
-            token = response.json()["access_token"]
-            st.session_state.token = token
-            # In a real app, you would decode the token or have a /users/me endpoint
-            # For simplicity, we'll just store the username. A better approach
-            # is to decode the JWT to get user roles and other data.
-            st.session_state.user = {"username": username, "roles": get_roles_from_token(token)}
+        if token_response.status_code != 200:
+            handle_api_error(token_response, "Login")
+            return
+
+        token = token_response.json()["access_token"]
+        st.session_state.token = token
+        
+        # Step 2: Get user details from a secure endpoint
+        headers = {"Authorization": f"Bearer {token}"}
+        user_response = requests.get(f"{BACKEND_URL}/users/me", headers=headers)
+
+        if user_response.status_code == 200:
+            st.session_state.user = user_response.json()
             st.rerun()
         else:
-            handle_api_error(response, "Login")
+            # If fetching user details fails, the token might be invalid or there's a server issue.
+            # Clear the token and show an error.
+            st.session_state.token = None
+            handle_api_error(user_response, "Could not fetch user details")
+
     except requests.exceptions.ConnectionError:
         st.error(f"Connection error: Could not connect to the API at {BACKEND_URL}.")
 
@@ -75,14 +86,3 @@ def register(username, password, roles):
             handle_api_error(response, "Registration")
     except requests.exceptions.ConnectionError:
         st.error(f"Connection error: Could not connect to the API at {BACKEND_URL}.")
-
-def get_roles_from_token(token: str) -> list:
-    """A simple (and insecure) way to decode the JWT payload."""
-    import base64
-    import json
-    try:
-        payload = token.split('.')[1]
-        decoded_payload = base64.b64decode(payload + '==').decode('utf-8')
-        return json.loads(decoded_payload).get("roles", [])
-    except Exception:
-        return []

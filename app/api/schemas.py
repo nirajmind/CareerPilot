@@ -101,3 +101,6 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     username: Optional[str] = None
     roles: List[str] = []
+
+class User(UserBase):
+    roles: List[str] = []

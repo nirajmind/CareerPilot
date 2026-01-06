@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from app.rag.mongo_vector import search, upsert
 from .schemas import (
     AnalysisRequest, AnalysisResponse, EvaluateAnswerRequest, 
-    EvaluateAnswerResponse, IngestRequest, UserCreate, Token
+    EvaluateAnswerResponse, IngestRequest, UserCreate, Token, User
 )
 from app.utils.logger import setup_logger
 from app.utils.mongo_handler import mongo_handler
@@ -108,6 +108,13 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         data={"sub": user["username"], "roles": user["roles"]}
     )
     return {"access_token": access_token, "token_type": "bearer"}
+
+@app.get("/users/me", response_model=User)
+async def read_users_me(current_user: dict = Depends(get_current_user)):
+    """
+    Fetches the current logged in user's details.
+    """
+    return current_user
 
 # For now, allow all origins so Streamlit UI can call it easily.
 # You can tighten this later.
