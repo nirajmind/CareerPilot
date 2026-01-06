@@ -12,3 +12,7 @@ pymongo
 google-genai
 pytest
 fakeredis
+passlib[bcrypt]
+argon2-cffi
+python-jose[cryptography]
+python-multipart

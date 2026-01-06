@@ -79,3 +79,28 @@ class EvaluateAnswerResponse(BaseModel):
 class IngestRequest(BaseModel):
     text: str
     source: Optional[str] = "manual"
+
+# --- Auth Schemas ---
+
+class UserBase(BaseModel):
+    username: str
+    is_active: Optional[bool] = True
+
+class UserCreate(UserBase):
+    password: str
+    roles: List[str] = ["user"]
+
+class UserInDB(UserBase):
+    hashed_password: str
+    roles: List[str]
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    username: Optional[str] = None
+    roles: List[str] = []
+
+class User(UserBase):
+    roles: List[str] = []

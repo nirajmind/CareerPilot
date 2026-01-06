@@ -57,4 +57,23 @@ class MongoHandler:
             return result
         return None
 
+    async def get_user(self, username: str):
+        """Retrieves a user from the database asynchronously."""
+        if self.db is not None:
+            def sync_find():
+                return self.db.users.find_one({"username": username})
+            user = await asyncio.to_thread(sync_find)
+            return user
+        return None
+
+    async def create_user(self, user_data: dict):
+        """Creates a new user in the database asynchronously."""
+        if self.db is not None:
+            def sync_insert():
+                return self.db.users.insert_one(user_data)
+            result = await asyncio.to_thread(sync_insert)
+            logger.info(f"User created with id: {result.inserted_id}")
+            return result
+        return None
+
 mongo_handler = MongoHandler()

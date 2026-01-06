@@ -4,22 +4,31 @@ CareerPilot is a cloud-native, agentic AI system designed to streamline the job 
 
 ## Core Features
 
--   **Multimodal Input:** Accepts resumes and job descriptions in various formats (PDF, DOCX, text).
--   **Agentic Workflows:** Utilizes LangGraph for multi-step reasoning, planning, and execution.
--   **FitGraph Engine:** Visualizes the alignment between a candidate's skills and a job's requirements.
--   **RAG Pipeline:** Grounds insights and suggestions using a Retrieval-Augmented Generation pipeline with MongoDB Atlas Vector Search.
--   **Cloud-Native & Containerized:** Built as a set of microservices, containerized with Docker, and ready for Kubernetes deployment.
+- **Multimodal Input:** Accepts resumes and job descriptions in various formats (PDF, DOCX, text).
+- **Agentic Workflows:** Utilizes LangGraph for multi-step reasoning, planning, and execution.
+- **FitGraph Engine:** Visualizes the alignment between a candidate's skills and a job's requirements.
+- **RAG Pipeline:** Grounds insights and suggestions using a Retrieval-Augmented Generation pipeline with MongoDB Atlas Vector Search.
+- **Cloud-Native & Containerized:** Built as a set of microservices, containerized with Docker, and ready for Kubernetes deployment.
 
 ## Tech Stack
 
 | Category                   | Technology                                    |
 | -------------------------- | --------------------------------------------- |
-| **Core Application**       | Python 3.10+, FastAPI, Streamlit, LangGraph |
+| **Core Application**       | Python 3.10+, FastAPI, Streamlit, LangGraph   |
 | **AI & Multimodal**        | Gemini API                                    |
 | **Vector Search & RAG**    | MongoDB Atlas Vector Search                   |
 | **State, Cache & Queues**  | Redis                                         |
 | **Containerization**       | Docker & Docker Compose                       |
 | **Orchestration**          | Kubernetes                                    |
+| **Security**               | JWT Authentication with RBAC                  |
+
+## Security
+
+The application is secured using JSON Web Tokens (JWT) with a Role-Based Access Control (RBAC) system.
+
+- **Authentication:** Users must register and log in to receive a JWT access token.
+- **Authorization:** All API endpoints are protected and require a valid token. Specific endpoints, like data ingestion, require an `admin` role.
+- **User Management:** User credentials and roles are stored securely in a dedicated `users` collection in MongoDB.
 
 ## System Architecture
 
@@ -53,18 +62,18 @@ graph TD
     C -- Reasons --> F
 ```
 
--   **Streamlit UI:** The primary user interface for uploading documents and viewing analysis.
--   **FastAPI Backend:** The central API that handles requests, orchestrates workflows, and communicates with other services.
--   **LangGraph Agent:** The "brain" of the application, responsible for planning, RAG, and generating insights.
--   **MongoDB:** The primary data store for logs, sessions, and the vector store for the RAG pipeline.
--   **Redis:** Used for caching, session management, and as a message broker for agent state.
--   **Gemini API:** Provides the multimodal reasoning and generation capabilities.
+- **Streamlit UI:** The primary user interface for uploading documents and viewing analysis.
+- **FastAPI Backend:** The central API that handles requests, orchestrates workflows, and communicates with other services.
+- **LangGraph Agent:** The "brain" of the application, responsible for planning, RAG, and generating insights.
+- **MongoDB:** The primary data store for logs, sessions, and the vector store for the RAG pipeline.
+- **Redis:** Used for caching, session management, and as a message broker for agent state.
+- **Gemini API:** Provides the multimodal reasoning and generation capabilities.
 
 ## Project Structure
 
 The `app/` directory contains the core application logic, organized by service:
 
-```
+```arch
 app/
 ├── agent/            # LangGraph agent for planning and execution
 │   ├── fitgraph.py
@@ -90,27 +99,30 @@ app/
 
 ### Prerequisites
 
--   Docker and Docker Compose
--   Python 3.10+
--   A Gemini API Key
+- Docker and Docker Compose
+- Python 3.10+
+- A Gemini API Key
 
 ### Running Locally with Docker Compose
 
 This is the recommended method for running CareerPilot locally.
 
-1.  **Clone the repository:**
-    ```bash
+1. **Clone the repository:**
+
+```bash
     git clone <repository-url>
     cd CareerPilot
     ```
 
-2.  **Create a `.env` file:**
-    Create a `.env` file in the root of the project and add your Gemini API key:
+2. **Create a `.env` file:**
+    Create a `.env` file in the root of the project with the following variables:
     ```
     GEMINI_API_KEY="your-gemini-api-key"
+    JWT_SECRET_KEY="your-super-secret-key-for-jwt"
     ```
+    You can generate a strong secret key with `openssl rand -hex 32`.
 
-3.  **Build and run the services:**
+3. **Build and run the services:**
     Navigate to the `infra/docker` directory and run Docker Compose:
     ```bash
     cd infra/docker
@@ -123,19 +135,26 @@ This will start all the necessary services:
 -   **MongoDB:** `mongodb://localhost:27017`
 -   **Redis:** `redis://localhost:6379`
 
+### Local Development (Without Docker)
+
+For a detailed guide on setting up a local development environment without Docker Compose, please see the [**Development Guide (DEVELOPMENT.md)**](DEVELOPMENT.md).
+
 ## API Endpoints
 
-The FastAPI backend exposes the following endpoints:
+The FastAPI backend exposes the following endpoints. All endpoints (except `/health` and the `/auth` routes) require a valid JWT.
 
-| Method | Endpoint              | Description                                        |
-| ------ | --------------------- | -------------------------------------------------- |
-| `GET`  | `/health`             | Health check for the API service.                  |
-| `POST` | `/analyze`            | Analyzes a resume and job description.             |
-| `POST` | `/evaluate_answer`    | Evaluates a user's answer to an interview question.|
-| `POST` | `/rag/search`         | Performs a search in the RAG pipeline.             |
-| `POST` | `/rag/ingest`         | Ingests a new document into the vector store.      |
-| `POST` | `/stream/analyze`     | Streams the analysis of a resume and JD.           |
-| `POST` | `/stream/evaluate`    | Streams the evaluation of a user's answer.         |
+| Method | Endpoint              | Description                                        | Authentication |
+| ------ | --------------------- | -------------------------------------------------- | -------------- |
+| `GET`  | `/health`             | Health check for the API service.                  | None           |
+| `POST` | `/auth/register`      | Create a new user account.                         | None           |
+| `POST` | `/auth/token`         | Log in and receive a JWT.                          | None           |
+| `GET`  | `/users/me`           | Get details for the currently logged-in user.      | User           |
+| `POST` | `/analyze`            | Analyzes a resume and job description.             | User           |
+| `POST` | `/evaluate_answer`    | Evaluates a user's answer to an interview question.| User           |
+| `POST` | `/rag/search`         | Performs a search in the RAG pipeline.             | User           |
+| `POST` | `/rag/ingest`         | Ingests a new document into the vector store.      | Admin Only     |
+| `POST` | `/stream/analyze`     | Streams the analysis of a resume and JD.           | User           |
+| `POST` | `/stream/evaluate`    | Streams the evaluation of a user's answer.         | User           |
 
 ## How to Contribute
 

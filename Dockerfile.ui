@@ -2,10 +2,13 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-COPY app/ ./app/
 COPY requirements.txt .
-
 RUN pip install --no-cache-dir -r requirements.txt
+
+COPY app/ ./app/
+
+# Add the app directory to the python path
+ENV PYTHONPATH=/app
 
 EXPOSE 8501
 
