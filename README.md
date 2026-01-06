@@ -139,21 +139,22 @@ This will start all the necessary services:
 
 For a detailed guide on setting up a local development environment without Docker Compose, please see the [**Development Guide (DEVELOPMENT.md)**](DEVELOPMENT.md).
 
-## API Endpoints. All endpoints (except `/health` and the `/auth` routes) require a valid JWT.
+## API Endpoints
+
+The FastAPI backend exposes the following endpoints. All endpoints (except `/health` and the `/auth` routes) require a valid JWT.
 
 | Method | Endpoint              | Description                                        | Authentication |
 | ------ | --------------------- | -------------------------------------------------- | -------------- |
 | `GET`  | `/health`             | Health check for the API service.                  | None           |
 | `POST` | `/auth/register`      | Create a new user account.                         | None           |
 | `POST` | `/auth/token`         | Log in and receive a JWT.                          | None           |
+| `GET`  | `/users/me`           | Get details for the currently logged-in user.      | User           |
 | `POST` | `/analyze`            | Analyzes a resume and job description.             | User           |
 | `POST` | `/evaluate_answer`    | Evaluates a user's answer to an interview question.| User           |
 | `POST` | `/rag/search`         | Performs a search in the RAG pipeline.             | User           |
 | `POST` | `/rag/ingest`         | Ingests a new document into the vector store.      | Admin Only     |
 | `POST` | `/stream/analyze`     | Streams the analysis of a resume and JD.           | User           |
-| `POST` | `/stream/evaluate`    | Streams the evaluation of a user's answer.         | User  re.      |
-| `POST` | `/stream/analyze`     | Streams the analysis of a resume and JD.           |
-| `POST` | `/stream/evaluate`    | Streams the evaluation of a user's answer.         |
+| `POST` | `/stream/evaluate`    | Streams the evaluation of a user's answer.         | User           |
 
 ## How to Contribute
 
