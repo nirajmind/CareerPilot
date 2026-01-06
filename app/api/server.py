@@ -1,13 +1,21 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
-import time
-import uuid
+from fastapi.security import OAuth2PasswordRequestForm
 
 from app.rag.mongo_vector import search, upsert
-from .schemas import AnalysisRequest, AnalysisResponse, EvaluateAnswerRequest, EvaluateAnswerResponse, IngestRequest
+from .schemas import (
+    AnalysisRequest, AnalysisResponse, EvaluateAnswerRequest, 
+    EvaluateAnswerResponse, IngestRequest, UserCreate, Token
+)
 from app.utils.logger import setup_logger
 from app.utils.mongo_handler import mongo_handler
+from app.api.auth import (
+    get_password_hash, verify_password, create_access_token, 
+    get_current_user, require_role
+)
 import json
+import time
+import uuid
 
 logger = setup_logger()
 
@@ -63,6 +71,44 @@ async def db_handler_middleware(request: Request, call_next):
     
     return response
 
+@app.post("/auth/register", status_code=status.HTTP_201_CREATED)
+async def register_user(user: UserCreate):
+    existing_user = await mongo_handler.get_user(user.username)
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already registered",
+        )
+    hashed_password = get_password_hash(user.password)
+    user_data = {
+        "username": user.username,
+        "hashed_password": hashed_password,
+        "roles": user.roles,
+        "is_active": True,
+    }
+    await mongo_handler.create_user(user_data)
+    return {"message": "User created successfully"}
+
+@app.post("/auth/token", response_model=Token)
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = await mongo_handler.get_user(form_data.username)
+    if not user or not verify_password(form_data.password, user["hashed_password"]):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if not user["is_active"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Inactive user"
+        )
+    
+    access_token = create_access_token(
+        data={"sub": user["username"], "roles": user["roles"]}
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
 # For now, allow all origins so Streamlit UI can call it easily.
 # You can tighten this later.
 app.add_middleware(
@@ -80,11 +126,9 @@ def health_check():
 
 
 @app.post("/analyze", response_model=AnalysisResponse)
-async def analyze(request: AnalysisRequest):
+async def analyze(request: AnalysisRequest, current_user: dict = Depends(get_current_user)):
     logger.info(
-        f"Received analysis request with resume and jd - "
-        f"resume_preview={str(request.resume_text)[:100]}, "
-        f"jd_preview={str(request.jd_text)[:100]}"
+        f"Received analysis request from user '{current_user['username']}'"
     )
 
     # Redis Caching
@@ -105,20 +149,21 @@ async def analyze(request: AnalysisRequest):
         raise HTTPException(status_code=500, detail=str(e))
     
 @app.post("/evaluate_answer", response_model=EvaluateAnswerResponse)
-async def evaluate_answer_api(payload: EvaluateAnswerRequest):
+async def evaluate_answer_api(payload: EvaluateAnswerRequest, current_user: dict = Depends(get_current_user)):
     result = await gemini.evaluate_answer( payload.question, payload.user_answer, payload.resume_text, payload.jd_text )
     return result
 
 @app.post("/rag/search")
-async def rag_search(query: str):
+async def rag_search(query: str, current_user: dict = Depends(get_current_user)):
     embedding = await gemini.embed(query)
     results = search(embedding, top_k=5)
     return {"results": results}
 
 @app.post("/rag/ingest")
-async def rag_ingest(payload: IngestRequest):
+async def rag_ingest(payload: IngestRequest, current_user: dict = Depends(require_role("admin"))):
     """
     Endpoint to ingest a document into the vector store.
+    Requires 'admin' role.
     """
     try:
         embedding = await gemini.embed(payload.text)
@@ -136,7 +181,7 @@ async def rag_ingest(payload: IngestRequest):
 from fastapi.responses import StreamingResponse
 
 @app.post("/stream/analyze")
-async def stream_analyze(request: AnalysisRequest):
+async def stream_analyze(request: AnalysisRequest, current_user: dict = Depends(get_current_user)):
     return StreamingResponse(
         gemini.stream_resume_analysis(
             request.resume_text,
@@ -146,7 +191,7 @@ async def stream_analyze(request: AnalysisRequest):
     )
 
 @app.post("/stream/evaluate")
-async def stream_evaluate(payload: EvaluateAnswerRequest):
+async def stream_evaluate(payload: EvaluateAnswerRequest, current_user: dict = Depends(get_current_user)):
     return StreamingResponse(
         gemini.stream_evaluation(
             payload.question,
