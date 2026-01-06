@@ -44,7 +44,7 @@ It is highly recommended to use a virtual environment to manage project dependen
 python -m venv .venv
 ```
 
-#### Activate the Virtual Environment:
+#### Activate the Virtual Environment
 
 - **Windows (PowerShell):**
 
