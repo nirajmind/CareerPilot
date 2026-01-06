@@ -14,7 +14,7 @@ CareerPilot is a cloud-native, agentic AI system designed to streamline the job 
 
 | Category                   | Technology                                    |
 | -------------------------- | --------------------------------------------- |
-| **Core Application**       | Python 3.10+, FastAPI, Streamlit, LangGraph |
+| **Core Application**       | Python 3.10+, FastAPI, Streamlit, LangGraph   |
 | **AI & Multimodal**        | Gemini API                                    |
 | **Vector Search & RAG**    | MongoDB Atlas Vector Search                   |
 | **State, Cache & Queues**  | Redis                                         |
@@ -134,6 +134,10 @@ This will start all the necessary services:
 -   **API:** `http://localhost:8000`
 -   **MongoDB:** `mongodb://localhost:27017`
 -   **Redis:** `redis://localhost:6379`
+
+### Local Development (Without Docker)
+
+For a detailed guide on setting up a local development environment without Docker Compose, please see the [**Development Guide (DEVELOPMENT.md)**](DEVELOPMENT.md).
 
 ## API Endpoints. All endpoints (except `/health` and the `/auth` routes) require a valid JWT.
 
