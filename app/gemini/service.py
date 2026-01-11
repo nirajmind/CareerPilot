@@ -5,9 +5,12 @@ import json
 import re
 from typing import List, Optional
 from google.genai import Client
+from google.genai.types import HarmCategory, HarmBlockThreshold
 from app.gemini.prompt_loader import PromptLoader
 import uuid
 import time
+import cv2
+import tempfile
 
 from app.utils.logger import setup_logger
 logger = setup_logger()
@@ -16,17 +19,22 @@ class GeminiService:
     def __init__( self, redis_client=None, logger=None, 
                  embedding_ttl_seconds: int = 60 * 60 * 24 * 30, # 30 days 
                  ):
-             api_key = os.getenv("GEMINI_API_KEY") 
-             if not api_key: 
-                 raise ValueError("GEMINI_API_KEY is missing") 
-             # Async Gemini client 
-             self.client = Client(api_key=api_key).aio 
-             self.embedding_model = "models/text-embedding-004" 
-             self.chat_model = "models/gemini-2.0-flash" 
-             self.redis = redis_client 
-             self.logger = logger or logger
-             self.emb_ttl = embedding_ttl_seconds 
-             self.prompts = PromptLoader(redis_client)
+        api_key = os.getenv("GEMINI_API_KEY") 
+        if not api_key: 
+            raise ValueError("GEMINI_API_KEY is missing") 
+
+        # --- Model Configuration ---
+        # Read model names from environment variables, with sensible defaults.
+        self.chat_model = os.getenv("GEMINI_MODEL", "models/gemini-pro")
+        self.vision_model = os.getenv("GEMINI_VISION_MODEL", "models/gemini-pro-vision")
+        self.embedding_model = os.getenv("GEMINI_EMBEDDING_MODEL", "models/text-embedding-004")
+
+        # Async Gemini client 
+        self.client = Client(api_key=api_key).aio 
+        self.redis = redis_client 
+        self.logger = logger or logger
+        self.emb_ttl = embedding_ttl_seconds 
+        self.prompts = PromptLoader(redis_client)
 
     def _new_correlation_id(self):
         return str(uuid.uuid4())
@@ -160,6 +168,76 @@ class GeminiService:
         logger.info(f"The raw response from gemini - {resp}")
         text = resp.candidates[0].content.parts[0].text
         return self.safe_json_parse(text)
+
+    async def analyze_video_and_jd(self, video_file_path: str):
+        """
+        Analyzes a video to extract resume and JD text, then performs analysis.
+        """
+        logger.info(f"Starting video analysis for file: {video_file_path}")
+
+        # 1. Extract frames from video
+        frames = self._extract_frames(video_file_path, interval_ms=500)
+        if not frames:
+            raise ValueError("Could not extract frames from video.")
+        
+        logger.info(f"Extracted {len(frames)} frames from video.")
+
+        # 2. Use Gemini Vision to extract text
+        prompt = await self.prompts.get("analyze_video")
+        
+        # Combine prompt and frames for Gemini
+        content = [prompt] + frames
+
+        generation_config = {"response_mime_type": "application/json"}
+        safety_settings = {
+            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+        }
+
+        resp = await self._log_and_time(
+            "generate_content_video_analysis",
+            self.client.models.generate_content,
+            model=self.vision_model,
+            contents=content,
+            generation_config=generation_config,
+            safety_settings=safety_settings,
+        )
+
+        extracted_text_json = self.safe_json_parse(resp.text)
+        
+        resume_text = extracted_text_json.get("resume_text")
+        jd_text = extracted_text_json.get("jd_text")
+
+        if not resume_text or not jd_text:
+            raise ValueError("Could not extract resume or JD text from video.")
+
+        logger.info("Successfully extracted text from video. Proceeding with analysis.")
+        
+        # 3. Perform the standard analysis on the extracted text
+        return await self.analyze_resume_and_jd(resume_text, jd_text)
+
+    def _extract_frames(self, video_path: str, interval_ms: int) -> List:
+        """Extracts frames from a video file at a given interval."""
+        frames = []
+        vidcap = cv2.VideoCapture(video_path)
+        if not vidcap.isOpened():
+            logger.error("Could not open video file.")
+            return []
+        
+        last_frame_time = -interval_ms
+        success, image = vidcap.read()
+        while success:
+            current_frame_time = vidcap.get(cv2.CAP_PROP_POS_MSEC)
+            if current_frame_time - last_frame_time >= interval_ms:
+                _, buffer = cv2.imencode('.jpg', image)
+                frames.append({'mime_type': 'image/jpeg', 'data': buffer.tobytes()})
+                last_frame_time = current_frame_time
+            success, image = vidcap.read()
+        
+        vidcap.release()
+        return frames
 
     # ---------------------------------------------------------
     # ANSWER EVALUATION
@@ -354,5 +432,5 @@ class GeminiService:
         except Exception as e:
             logger.error(f"Error streaming evaluation: {e}")
             yield f"[ERROR] {str(e)}"
-        
-        
+
+

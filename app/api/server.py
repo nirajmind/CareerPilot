@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request, Depends, status
+from fastapi import FastAPI, HTTPException, Request, Depends, status, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 
@@ -16,6 +16,8 @@ from app.api.auth import (
 import json
 import time
 import uuid
+import tempfile
+import os
 
 logger = setup_logger()
 
@@ -154,6 +156,36 @@ async def analyze(request: AnalysisRequest, current_user: dict = Depends(get_cur
     except Exception as e:
         logger.error(f"Analysis failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/analyze_video", response_model=AnalysisResponse)
+async def analyze_video(current_user: dict = Depends(get_current_user), video_file: UploadFile = File(...)):
+    """
+    Accepts a video file, extracts resume and JD text using multimodal AI,
+    and returns the standard analysis.
+    """
+    if not video_file.content_type.startswith("video/"):
+        raise HTTPException(status_code=400, detail="Invalid file type. Please upload a video.")
+
+    try:
+        # Save the uploaded video to a temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
+            tmp.write(await video_file.read())
+            video_path = tmp.name
+        
+        logger.info(f"Video saved to temporary file: {video_path}")
+        
+        # Perform the analysis
+        analysis_result = await gemini.analyze_video_and_jd(video_path)
+        
+        return analysis_result
+
+    except Exception as e:
+        logger.error(f"Video analysis failed: {e}")
+        raise HTTPException(status_code=500, detail=f"An error occurred during video analysis: {e}")
+    finally:
+        # Clean up the temporary file
+        if 'video_path' in locals() and os.path.exists(video_path):
+            os.remove(video_path)
     
 @app.post("/evaluate_answer", response_model=EvaluateAnswerResponse)
 async def evaluate_answer_api(payload: EvaluateAnswerRequest, current_user: dict = Depends(get_current_user)):

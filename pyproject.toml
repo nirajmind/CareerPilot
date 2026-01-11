@@ -28,13 +28,14 @@ dependencies = [
     "streamlit_javascript",
     "redis",
     "pymongo",
-    "google-genai",
+    "google-genai[types]",
     "pytest",
     "fakeredis",
     "passlib[bcrypt]",
     "argon2-cffi",
     "python-jose[cryptography]",
     "python-multipart",
+    "opencv-python",
 ]
 
 [project.urls]

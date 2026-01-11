@@ -19,13 +19,18 @@ cd CareerPilot
 
 ## 2. Create and Configure the Environment File
 
-Create a `.env` file in the root of the project. This file will hold your secret keys and connection settings.
+Create a `.env` file in the root of the project. This file is the single source of truth for all configuration, for both local development and Docker Compose. The application uses the `python-dotenv` library to automatically load these variables when you run the services.
 
-```bash
+Copy the following into your `.env` file and customize the values to match your local setup:
+
+```dotenv
+# --- Security Keys ---
 GEMINI_API_KEY="your-gemini-api-key"
 JWT_SECRET_KEY="your-super-secret-key-for-jwt"
 
-# If running Mongo and Redis locally, these defaults are usually fine
+# --- Local Service Configuration ---
+# If your local MongoDB or Redis are running on different ports or hosts,
+# change these values. The application code will automatically use them.
 MONGO_URI="mongodb://localhost:27017/careerpilot"
 REDIS_HOST="localhost"
 REDIS_PORT="6379"

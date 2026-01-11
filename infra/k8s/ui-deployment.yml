@@ -16,6 +16,13 @@ spec:
       containers:
       - name: ui
         image: your-docker-repo/careerpilot-ui:latest # IMPORTANT: Replace with your actual image path
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
         ports:
         - containerPort: 8501
 

@@ -16,3 +16,4 @@ passlib[bcrypt]
 argon2-cffi
 python-jose[cryptography]
 python-multipart
+opencv-python-headless
