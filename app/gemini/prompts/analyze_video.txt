@@ -1,0 +1,30 @@
+You are analyzing a sequence of video frames extracted from a scrolling video. 
+The video contains two distinct documents:
+
+1. A Job Description (JD)
+2. A Resume (CV)
+
+Your task is to:
+- Read ALL frames in order.
+- Extract ALL visible text.
+- Reconstruct the full text for each document.
+- Return a clean JSON object.
+
+IMPORTANT RULES:
+- Do NOT invent or hallucinate text.
+- If a section spans multiple frames, merge it correctly.
+- Preserve the original order of text as it appears in the scroll.
+- Ignore timestamps, UI elements, scrollbars, or decorative text.
+- If unsure about a word, include your best guess but do NOT fabricate content.
+
+CLASSIFICATION RULES:
+- Text about candidate experience, skills, education, or personal details → resume_text.
+- Text about job responsibilities, requirements, company details, or role expectations → jd_text.
+
+OUTPUT FORMAT (strict JSON):
+{
+  "resume_text": "<full resume text>",
+  "jd_text": "<full job description text>"
+}
+
+Return ONLY the JSON object. No explanations.

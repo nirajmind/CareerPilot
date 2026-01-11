@@ -1,6 +1,7 @@
 import streamlit as st
 from app.ui.views.resume_page import render_resume_page
 from app.ui.views.jd_page import render_jd_page
+from app.ui.views.video_page import render_video_page
 from app.ui.views.analysis_page import render_analysis_page
 from app.ui.views.auth_page import render_auth_page
 
@@ -19,7 +20,7 @@ if not st.session_state.token:
 else:
     page = st.sidebar.radio(
         "Navigate",
-        ["Resume Input", "Job Description", "Run Analysis"]
+        ["Resume Input", "Job Description", "Video Upload", "Run Analysis"]
     )
 
     st.sidebar.success(f"Logged in as {st.session_state.user['username']}")
@@ -32,5 +33,7 @@ else:
         render_resume_page()
     elif page == "Job Description":
         render_jd_page()
+    elif page == "Video Upload":
+        render_video_page()
     elif page == "Run Analysis":
         render_analysis_page()

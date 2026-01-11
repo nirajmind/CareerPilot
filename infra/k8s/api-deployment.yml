@@ -16,6 +16,13 @@ spec:
       containers:
       - name: api
         image: your-docker-repo/careerpilot-api:latest # IMPORTANT: Replace with your actual image path
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
         ports:
         - containerPort: 8000
         env:
