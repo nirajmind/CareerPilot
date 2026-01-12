@@ -81,9 +81,15 @@ app/
 ├── api/              # FastAPI backend server
 │   ├── schemas.py
 │   └── server.py
-├── gemini/           # Service for interacting with the Gemini API
-│   ├── prompts/
-│   └── service.py
+├── gemini/           # Handles all interactions with the Gemini API
+│   ├── client.py         # Core client for API calls and configuration
+│   ├── embeddings.py     # Logic for generating text embeddings
+│   ├── text_analysis.py  # Logic for resume and JD text analysis
+│   ├── video_analysis.py # Logic for orchestrating video processing
+│   ├── video_extraction.py # Helper functions for frame extraction from videos
+│   ├── json_utils.py     # Utilities for safe JSON parsing
+│   ├── retry.py          # Retry logic for resilient API calls
+│   └── prompts/          # Directory for prompt templates
 ├── rag/              # RAG pipeline with MongoDB Vector Search
 │   ├── ingest.py
 │   └── mongo_vector.py
