@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "careerpilot"
+version = "0.1.0"
+authors = [
+  { name="Niraj Adhikary", email="nirajmind@users.noreply.github.com" },
+]
+description = "A cloud-native, agentic AI system for job application analysis."
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "python-dotenv",
+    "pydantic",
+    "streamlit",
+    "python-docx",
+    "pdfplumber",
+    "plotly",
+    "streamlit_javascript",
+    "redis",
+    "pymongo",
+    "google-genai[types]",
+    "pytest",
+    "fakeredis",
+    "passlib[bcrypt]",
+    "argon2-cffi",
+    "python-jose[cryptography]",
+    "python-multipart",
+    "opencv-python",
+]
+
+[project.urls]
+Homepage = "https://github.com/nirajmind/CareerPilot"
+Issues = "https://github.com/nirajmind/CareerPilot/issues"

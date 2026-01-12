@@ -1,214 +1,171 @@
-🚀 CareerPilot – Autonomous Multimodal Job Application Agent
-A cloud‑native, agentic AI system powered by Gemini 3, LangGraph, Redis, MongoDB Vector Search, and Streamlit.
-CareerPilot is an Action‑Era AI application designed to analyze resumes, job descriptions, and video scrolls using multimodal reasoning, agentic workflows, and RAG grounding.
-It provides a FitGraph skill‑match visualization and generates tailored insights for job seekers.
-This project is built entirely in Python, fully containerized, and deployable on Kubernetes with Caddy‑based TLS and a DuckDNS domain.
+# CareerPilot: Autonomous Multimodal Job Application Agent
 
-- Stateful agents (Redis)
-- Vector search (MongoDB Atlas)
-- Multimodal reasoning (Gemini 3)
-- Containerized microservices (Docker)
-- Cluster orchestration (Kubernetes)
-- Public access (DuckDNS domain)
+CareerPilot is a cloud-native, agentic AI system designed to streamline the job application process. Powered by Gemini, LangGraph, and a modern Python stack, it analyzes resumes, job descriptions, and even video scrolls to provide a comprehensive skill-match analysis, generate tailored insights, and help job seekers prepare for interviews.
 
+## Core Features
 
-                           ┌──────────────────────────────┐
-                           │         Streamlit UI          │
-                           │  - Uploads                    │
-                           │  - FitGraph                   │
-                           │  - Agent Output               │
-                           └──────────────┬───────────────┘
-                                          │
-                                          ▼
-                           ┌──────────────────────────────┐
-                           │       FastAPI Backend         │
-                           │  - API endpoints              │
-                           │  - Calls LangGraph agent      │
-                           │  - Containerized (Docker)     │
-                           └──────────────┬───────────────┘
-                                          │
-                                          ▼
-                           ┌──────────────────────────────┐
-                           │        LangGraph Agent        │
-                           │  - Planning                   │
-                           │  - RAG retrieval              │
-                           │  - FitGraph logic             │
-                           │  - Uses Redis for state       │
-                           └──────────────┬───────────────┘
-                                          │
-     ┌────────────────────────────────────┼────────────────────────────────────┐
-     ▼                                    ▼                                    ▼
-┌───────────────┐               ┌────────────────┐                 ┌──────────────────────┐
-│ MongoDB Atlas  │               │ Gemini 3 API   │                 │ Redis                │
-│ Vector Search  │               │ Multimodal     │                 │ - Agent State        │
-│ - Embeddings   │               │ Reasoning      │                 │ - Caching            │
-│ - Retrieval    │               │ Agentic Steps  │                 │ - Task Queue         │
-└───────────────┘               └────────────────┘                 └──────────────────────┘
+- **Multimodal Input:** Accepts resumes and job descriptions in various formats (PDF, DOCX, text).
+- **Agentic Workflows:** Utilizes LangGraph for multi-step reasoning, planning, and execution.
+- **FitGraph Engine:** Visualizes the alignment between a candidate's skills and a job's requirements.
+- **RAG Pipeline:** Grounds insights and suggestions using a Retrieval-Augmented Generation pipeline with MongoDB Atlas Vector Search.
+- **Cloud-Native & Containerized:** Built as a set of microservices, containerized with Docker, and ready for Kubernetes deployment.
 
-🧱 Features
-• 	Multimodal Input Support
-Upload PDFs, DOCX, screenshots, or video scrolls of job posts.
-• 	Agentic Workflow (LangGraph)
-Multi‑step planning, reasoning, and execution with Redis‑backed state.
-• 	FitGraph Engine
-Visual skill‑match mapping between resume and job description.
-• 	RAG Pipeline
-Grounded resume rewriting using MongoDB Atlas Vector Search.
-• 	Streamlit UI
-Simple, fast, Python‑native interface.
-• 	Cloud‑Native Deployment
-Dockerized microservices orchestrated via Kubernetes.
+## Tech Stack
 
-🧠 Tech Stack
-Core Application
-• 	Python 3.10+
-• 	FastAPI (Backend API)
-• 	LangGraph (Agent workflow + state machine)
-• 	Streamlit (UI)
-AI Layer
-• 	Gemini 3 API (Multimodal reasoning)
-RAG Layer
-• 	MongoDB Atlas Vector Search
-• 	Embeddings
-• 	Chunk storage
-• 	Similarity search
-State & Caching
-• 	Redis
-• 	Agent state persistence
-• 	Caching Gemini responses
-• 	Workflow checkpoints
-Containerization & Orchestration
-• 	Docker
-• 	Kubernetes (k3s recommended)
-• 	Caddy (TLS + reverse proxy)
-• 	DuckDNS (public domain)
+| Category                   | Technology                                    |
+| -------------------------- | --------------------------------------------- |
+| **Core Application**       | Python 3.10+, FastAPI, Streamlit, LangGraph   |
+| **AI & Multimodal**        | Gemini API                                    |
+| **Vector Search & RAG**    | MongoDB Atlas Vector Search                   |
+| **State, Cache & Queues**  | Redis                                         |
+| **Containerization**       | Docker & Docker Compose                       |
+| **Orchestration**          | Kubernetes                                    |
+| **Security**               | JWT Authentication with RBAC                  |
 
-🏗️ Architecture Overview
+## Security
 
+The application is secured using JSON Web Tokens (JWT) with a Role-Based Access Control (RBAC) system.
 
-📂 Project Structure
+- **Authentication:** Users must register and log in to receive a JWT access token.
+- **Authorization:** All API endpoints are protected and require a valid token. Specific endpoints, like data ingestion, require an `admin` role.
+- **User Management:** User credentials and roles are stored securely in a dedicated `users` collection in MongoDB.
 
-CareerPilot/
-│
-├── app/
-│   ├── ui/                 # Streamlit UI
-│   │   └── main.py
-│   ├── api/                # FastAPI backend
-│   │   └── server.py
-│   ├── agent/              # LangGraph workflows
-│   │   ├── workflow.py
-│   │   └── fitgraph.py
-│   ├── rag/                # RAG pipeline
-│   │   ├── ingest.py
-│   │   ├── embeddings.py
-│   │   └── mongo_vector.py
-│   └── utils/
-│
-├── infra/
-│   ├── docker/
-│   │   ├── Dockerfile.api
-│   │   ├── Dockerfile.ui
-│   │   ├── Dockerfile.agent
-|   |   ├── docker-compose.yml   ← **NEW**
-│   │   ├── redis.conf           ← **NEW**
-│   │   └── mongo-init.js        ← **NEW**
-│   ├── k8s/
-│   │   ├── api-deployment.yaml
-│   │   ├── mongo-statefulset.yaml  ← **NEW**
-│   │   ├── ui-deployment.yaml
-│   │   ├── agent-deployment.yaml
-│   │   ├── redis-statefulset.yaml
-│   │   ├── ingress.yaml
-│   │   └── namespace.yaml
-│
-├── docs/
-│   ├── architecture.png
-│   ├── system-design.md
-│
-└── README.md
+## System Architecture
 
+CareerPilot is architected as a set of communicating microservices, ensuring scalability and separation of concerns.
 
-⭐ The Services We Will Run
-1. FastAPI Backend
-- Handles Gemini API calls
-- Handles resume/JD processing
-- Handles RAG queries (via internal network)
-- Exposes /analyze endpoint
-2. Streamlit Frontend
-- Talks only to FastAPI
-- No direct DB access
-- No secrets
-3. MongoDB
-- Stores:
-- User sessions
-- RAG documents
-- Logs
-- Cached results (optional)
-4. Redis
-- Caching Gemini responses
-- Rate limiting
-- Background job queue (Celery or RQ later)
-5. RAG Service
-- Embedding generator
-- Vector DB (ChromaDB or Qdrant)
-- API for:
-- /embed
-- /search
-- /upsert
+```mermaid
+graph TD
+    subgraph User Interface
+        A[Streamlit UI]
+    end
 
+    subgraph Backend Services
+        B[FastAPI Backend]
+        C[LangGraph Agent]
+    end
 
+    subgraph Data & State
+        D[MongoDB]
+        E[Redis]
+    end
 
+    subgraph AI Services
+        F[Gemini API]
+    end
 
+    A -- HTTP Requests --> B
+    B -- Calls --> C
+    C -- Manages State --> E
+    C -- Caches Data --> E
+    C -- Performs RAG --> D
+    C -- Reasons --> F
+```
 
-🧪 Running Locally (Dev Mode)
-1. Install dependencies
+- **Streamlit UI:** The primary user interface for uploading documents and viewing analysis.
+- **FastAPI Backend:** The central API that handles requests, orchestrates workflows, and communicates with other services.
+- **LangGraph Agent:** The "brain" of the application, responsible for planning, RAG, and generating insights.
+- **MongoDB:** The primary data store for logs, sessions, and the vector store for the RAG pipeline.
+- **Redis:** Used for caching, session management, and as a message broker for agent state.
+- **Gemini API:** Provides the multimodal reasoning and generation capabilities.
 
-2. Start Redis (local)
+## Project Structure
 
-3. Run Streamlit UI
+The `app/` directory contains the core application logic, organized by service:
 
-4. Run FastAPI backend
+```arch
+app/
+├── agent/            # LangGraph agent for planning and execution
+│   ├── fitgraph.py
+│   └── workflow.py
+├── api/              # FastAPI backend server
+│   ├── schemas.py
+│   └── server.py
+├── gemini/           # Handles all interactions with the Gemini API
+│   ├── client.py         # Core client for API calls and configuration
+│   ├── embeddings.py     # Logic for generating text embeddings
+│   ├── text_analysis.py  # Logic for resume and JD text analysis
+│   ├── video_analysis.py # Logic for orchestrating video processing
+│   ├── video_extraction.py # Helper functions for frame extraction from videos
+│   ├── json_utils.py     # Utilities for safe JSON parsing
+│   ├── retry.py          # Retry logic for resilient API calls
+│   └── prompts/          # Directory for prompt templates
+├── rag/              # RAG pipeline with MongoDB Vector Search
+│   ├── ingest.py
+│   └── mongo_vector.py
+├── ui/               # Streamlit frontend application
+│   ├── components/
+│   └── views/
+└── utils/            # Shared utility functions
+    ├── logger.py
+    └── mongo_handler.py
+```
 
+## Getting Started
 
-🐳 Running with Docker Compose
+### Prerequisites
 
-This starts:
-• 	Streamlit UI
-• 	FastAPI backend
-• 	LangGraph agent worker
-• 	Redis
+- Docker and Docker Compose
+- Python 3.10+
+- A Gemini API Key
 
-☸️ Deploying on Kubernetes (k3s)
-1. Apply namespace
+### Running Locally with Docker Compose
 
-2. Deploy services
+This is the recommended method for running CareerPilot locally.
 
-3. Expose via Caddy + DuckDNS
-Your Caddyfile entry:
+1. **Clone the repository:**
 
+```bash
+    git clone <repository-url>
+    cd CareerPilot
+    ```
 
-🧩 🔭 Observability & Monitoring
-CareerPilot includes a full observability stack to ensure deep visibility into system performance, resource usage, agent behavior, and cluster health.
-This makes the platform production‑ready and easy to debug, scale, and optimize.
-Included Observability Components
-|  |  | 
-|  |  | 
-|  |  | 
-|  |  | 
-|  |  | 
-|  |  | 
+2. **Create a `.env` file:**
+    Create a `.env` file in the root of the project with the following variables:
+    ```
+    GEMINI_API_KEY="your-gemini-api-key"
+    JWT_SECRET_KEY="your-super-secret-key-for-jwt"
+    ```
+    You can generate a strong secret key with `openssl rand -hex 32`.
 
+3. **Build and run the services:**
+    Navigate to the `infra/docker` directory and run Docker Compose:
+    ```bash
+    cd infra/docker
+    docker-compose up --build
+    ```
 
-Live Monitoring Dashboard
-Your observability stack is already deployed and accessible at:
+This will start all the necessary services:
+-   **UI:** `http://localhost:8501`
+-   **API:** `http://localhost:8000`
+-   **MongoDB:** `mongodb://localhost:27017`
+-   **Redis:** `redis://localhost:6379`
 
+### Local Development (Without Docker)
 
+For a detailed guide on setting up a local development environment without Docker Compose, please see the [**Development Guide (DEVELOPMENT.md)**](DEVELOPMENT.md).
 
-👥 Team
-• 	Niraj Kumar Adhikary – Lead Architect
-• 	Allah Nawaz – UI (Streamlit)
-• 	Zain – RAG + ML
-• 	Saeedah – Testing & Documentation
+## API Endpoints
 
-📜 License
-MIT License
+The FastAPI backend exposes the following endpoints. All endpoints (except `/health` and the `/auth` routes) require a valid JWT.
+
+| Method | Endpoint              | Description                                        | Authentication |
+| ------ | --------------------- | -------------------------------------------------- | -------------- |
+| `GET`  | `/health`             | Health check for the API service.                  | None           |
+| `POST` | `/auth/register`      | Create a new user account.                         | None           |
+| `POST` | `/auth/token`         | Log in and receive a JWT.                          | None           |
+| `GET`  | `/users/me`           | Get details for the currently logged-in user.      | User           |
+| `POST` | `/analyze`            | Analyzes a resume and job description.             | User           |
+| `POST` | `/evaluate_answer`    | Evaluates a user's answer to an interview question.| User           |
+| `POST` | `/rag/search`         | Performs a search in the RAG pipeline.             | User           |
+| `POST` | `/rag/ingest`         | Ingests a new document into the vector store.      | Admin Only     |
+| `POST` | `/stream/analyze`     | Streams the analysis of a resume and JD.           | User           |
+| `POST` | `/stream/evaluate`    | Streams the evaluation of a user's answer.         | User           |
+
+## How to Contribute
+
+We welcome contributions! Please follow our [Branching Strategy](BRANCHING_STRATEGY.md) and open a pull request for any new features or bug fixes.
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

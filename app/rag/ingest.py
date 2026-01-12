@@ -1,21 +1,21 @@
 import os
 import uuid
-from .mongo_vector import upsert_document
-from app.gemini.service import GeminiService
+from .mongo_vector import upsert
+from app.gemini import GeminiClient
 
-gemini_service = GeminiService()
+gemini_client = GeminiClient()
 
 def ingest_text(text: str, metadata: dict = None):
     """Ingest a single text chunk into MongoDB vector store."""
     doc_id = str(uuid.uuid4())
-    embedding = gemini_service.embed(text)
+    embedding = gemini_client.embed(text)
 
-    upsert_document(
-        doc_id=doc_id,
-        text=text,
-        embedding=embedding,
-        metadata=metadata
-    )
+    upsert({
+        "_id": doc_id,
+        "text": text,
+        "embedding": embedding,
+        "metadata": metadata
+    })
 
     return doc_id
 

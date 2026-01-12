@@ -1,0 +1,64 @@
+```mermaid
+sequenceDiagram
+    participant User
+    participant StreamlitUI as Streamlit UI
+    participant FastAPI as FastAPI Backend
+    participant Agent as LangGraph Agent
+    participant Gemini as Gemini API
+    participant MongoDB as MongoDB
+    participant Redis as Redis Cache
+
+    %% Authentication Flow %%
+    User->>+StreamlitUI: 1. Enters Username & Password
+    StreamlitUI->>+FastAPI: 2. POST /auth/token (form data)
+    FastAPI->>+MongoDB: 3. Find user and verify password
+    MongoDB-->>-FastAPI: 4. Return user data (with roles)
+    FastAPI->>FastAPI: 5. Create JWT with user roles
+    FastAPI-->>-StreamlitUI: 6. Return JWT Access Token
+    StreamlitUI->>User: 7. Store token in session state
+
+    %% Main Application Flow (Authenticated) %%
+    User->>+StreamlitUI: 8. Upload Resume & JD
+    StreamlitUI->>+FastAPI: 9. POST /analyze (with Bearer Token)
+    
+    FastAPI->>FastAPI: 10. Verify JWT and user role
+    FastAPI->>+Agent: 11. Start Analysis Workflow
+    
+    Agent->>+Redis: 12. Check for cached result
+    Redis-->>-Agent: 13. Return cached data or nil
+    
+    alt Cache Miss
+        Agent->>+Gemini: 14a. Analyze Resume & JD
+        Gemini-->>-Agent: 15a. Structured JSON output
+        
+        Agent->>+MongoDB: 16a. Perform RAG Vector Search
+        MongoDB-->>-Agent: 17a. Return relevant documents
+        
+        Agent->>Agent: 18a. Generate FitGraph & Insights
+        
+        Agent->>+Redis: 19a. Cache the final result
+    else Cache Hit
+        Note over Agent: 14b. Use cached analysis
+    end
+
+    Agent-->>-FastAPI: 20. Return final analysis to API
+    FastAPI-->>-StreamlitUI: 21. Stream final response
+    StreamlitUI-->>-User: 22. Display FitGraph & Insights
+    
+    %% Video Analysis Flow (Authenticated) %%
+    User->>+StreamlitUI: 23. Uploads Video File
+    StreamlitUI->>+FastAPI: 24. POST /analyze_video (multipart/form-data with Bearer Token)
+    
+    FastAPI->>FastAPI: 25. Verify JWT and user role
+    FastAPI->>+Gemini: 26. Request video analysis
+    
+    Gemini->>Gemini: 27. Extract frames from video (OpenCV)
+    Gemini->>+Gemini: 28. Call Vision API to extract text from frames
+    Gemini-->>-Gemini: 29. Receive structured text (resume & JD)
+    
+    Note over Gemini: 30. Re-uses the standard text analysis logic
+    
+    Gemini-->>-FastAPI: 31. Return final analysis payload
+    FastAPI-->>-StreamlitUI: 32. Return JSON response
+    StreamlitUI-->>-User: 33. Display results on Analysis Page
+```
