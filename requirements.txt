@@ -1,19 +1,40 @@
-fastapi
-uvicorn
-python-dotenv
-pydantic
-streamlit
-python-docx
-pdfplumber
-plotly
-streamlit_javascript
-redis
-pymongo
-google-genai
-pytest
-fakeredis
-passlib[bcrypt]
-argon2-cffi
-python-jose[cryptography]
-python-multipart
-opencv-python-headless
+# --- Core Backend ---
+fastapi==0.115.2
+uvicorn==0.32.0
+python-dotenv==1.0.1
+pydantic==2.9.2
+python-multipart==0.0.9
+
+# --- Streamlit UI ---
+streamlit==1.39.0
+streamlit_javascript==0.1.5
+
+# --- Document Parsing ---
+python-docx==1.1.2
+pdfplumber==0.11.4
+
+# --- Visualization ---
+plotly==5.24.1
+
+# --- Databases / Cache ---
+redis==5.0.8
+pymongo==4.10.1
+
+# --- Gemini SDK (New API) ---
+google-genai==0.3.0
+
+# --- Auth / Security ---
+passlib[bcrypt]==1.7.4
+argon2-cffi==23.1.0
+python-jose[cryptography]==3.3.0
+
+# --- Video Processing ---
+opencv-python-headless==4.10.0.84
+Pillow==10.4.0
+imagehash==4.3.1
+easyocr==1.7.1
+numpy==1.26.4
+
+# --- Testing ---
+pytest==8.3.3
+fakeredis==2.23.3
