@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Request, Depends, status, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 import json
 import time
@@ -10,6 +10,7 @@ import tempfile
 import os
 
 from redis import asyncio as aioredis
+from requests import request
 
 from app.utils.logger import setup_logger
 from app.utils.mongo_handler import mongo_handler
@@ -51,6 +52,10 @@ gemini_client = GeminiClient(redis_client=redis_client)
 # --- FastAPI App ---
 app = FastAPI(title=API_TITLE, version=API_VERSION)
 
+@app.exception_handler(Exception) 
+async def global_exception_handler(request: Request, exc: Exception): 
+    logger.exception("Unhandled exception occurred") 
+    return JSONResponse( status_code=500, content={"error": str(exc)} )
 
 # ---------------------------------------------------------
 # Startup / Shutdown
@@ -213,7 +218,16 @@ async def analyze_video(
 
         logger.info(f"Video saved to temporary file: {video_path}")
 
+        cache_key = f"analysis:{hash(video_path)}"
+        cached = await redis_client.get(cache_key)
+
+        if cached:
+            logger.info("Cache hit for analysis request.")
+            return json.loads(cached)
+
+        logger.info("Cache miss for analysis request.")
         result = await analyze_video_and_jd(gemini_client, video_path)
+        await redis_client.set(cache_key, json.dumps(result), ex=3600)
         return result
 
     except Exception as e:

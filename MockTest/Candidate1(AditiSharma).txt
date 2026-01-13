@@ -1,0 +1,14 @@
+Candidate Name: [Redacted]
+Education:
+B. Tech in Computer Science, 2024
+- CGPA: 8.2
+Skills:
+- Python, HTML, CSS, SQL
+- Basic Data Structures
+- Git, Linux
+Projects:
+- Student Attendance Tracker (Python + SQLite)
+- Portfolio Website (HTML/CSS)
+Internships:
+None
+Career Goal: Entry-level software developer

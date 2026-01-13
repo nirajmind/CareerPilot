@@ -38,3 +38,8 @@ numpy==1.26.4
 # --- Testing ---
 pytest==8.3.3
 fakeredis==2.23.3
+
+# --- PyTorch (generic tags; CUDA installed via Dockerfile) ---
+torch
+torchvision
+torchaudio
