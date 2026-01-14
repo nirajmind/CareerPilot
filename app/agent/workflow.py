@@ -135,7 +135,7 @@ class CareerPilotAgent:
     async def search_vectors(self, state: AgentState):
         logger.info("Agent: Searching MongoDB for vector context.")
         query_embedding = await embed(self.gemini_client, state["jd_text"])
-        results = search(query_embedding, top_k=3)
+        results = await search(query_embedding, top_k=3)
         return {"vector_search_results": results}
 
     def decide_to_generate_knowledge(self, state: AgentState):

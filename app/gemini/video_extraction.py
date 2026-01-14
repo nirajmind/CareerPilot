@@ -61,6 +61,7 @@ def prepare_frames(frames):
 
 
 def ocr_fallback(prepared_frames):
+    logger.info(f"Starting OCR fallback processing with EasyOCR and for frames {prepared_frames}.")
     reader = easyocr.Reader(["en"])
     resume, jd = [], []
 

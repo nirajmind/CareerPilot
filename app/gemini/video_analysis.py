@@ -31,6 +31,7 @@ async def extract_text_from_video(client, video_path: str) -> dict:
 
     prompt = await client.prompts.get("analyze_video")
     content = [prompt] + prepared_frames
+    logger.debug(f"Gemini Vision content: {content}")
 
     try:
         resp = await client.call(
@@ -41,14 +42,21 @@ async def extract_text_from_video(client, video_path: str) -> dict:
             generation_config={"response_mime_type": "application/json"},
             safety_settings=client.safety(),
         )
-        extracted_text = validate_extraction(safe_json_parse(resp.text))
+        logger.debug(f"Gemini Vision raw response: {resp.text}")
+        parsed_response = safe_json_parse(resp.text)
+        logger.debug(f"Gemini Vision parsed response: {parsed_response}")
+        extracted_text = validate_extraction(parsed_response)
+        logger.info(f"Gemini Vision validation successful.")
+
 
     except (Exception, GeminiSafetyError) as e:
         logger.warning(f"Gemini Vision failed or was blocked: {e}. Falling back to OCR.")
         extracted_text = ocr_fallback(prepared_frames)
+        logger.debug(f"OCR fallback result: {extracted_text}")
 
     if client.redis:
         # Use a different key for extracted text to not conflict with final analysis
         await client.redis.set(f"video_extract:{video_hash}", json.dumps(extracted_text), ex=3600)
-
+    
+    logger.info(f"Returning extracted text from video: {extracted_text}")
     return extracted_text
