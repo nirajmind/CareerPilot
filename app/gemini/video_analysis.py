@@ -1,3 +1,4 @@
+import json
 from .video_extraction import (
     compute_video_hash,
     extract_raw_frames,
