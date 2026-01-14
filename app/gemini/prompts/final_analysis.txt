@@ -1,0 +1,12 @@
+Based on the user's resume and the provided job description, and grounded in the following contextual knowledge, perform a comprehensive analysis.
+
+Your response must be a JSON object that strictly follows the schema for the standard analysis (FitGraph, ResumeAnalysis, etc.).
+
+**Contextual Knowledge:**
+{context}
+
+**User Resume:**
+{resume_text}
+
+**Job Description:**
+{jd_text}

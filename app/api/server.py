@@ -27,13 +27,15 @@ from .schemas import (
 # --- Gemini Modular Imports ---
 from app.gemini import (
     GeminiClient,
-    analyze_resume_and_jd,
-    analyze_video_and_jd,
     evaluate_answer,
     stream_resume_analysis,
     stream_evaluation,
-    embed
+    embed,
+    extract_text_from_video
 )
+
+# --- Agent Imports ---
+from app.agent.workflow import CareerPilotAgent
 
 from .config import API_TITLE, API_VERSION
 
@@ -48,6 +50,9 @@ redis_client = aioredis.Redis(
 
 # --- Gemini Client ---
 gemini_client = GeminiClient(redis_client=redis_client)
+
+# --- LangGraph Agent ---
+agent = CareerPilotAgent(gemini_client=gemini_client, redis_client=redis_client)
 
 # --- FastAPI App ---
 app = FastAPI(title=API_TITLE, version=API_VERSION)
@@ -174,29 +179,25 @@ def health_check():
 # ---------------------------------------------------------
 @app.post("/analyze", response_model=AnalysisResponse)
 async def analyze(request: AnalysisRequest, current_user: dict = Depends(get_current_user)):
-    logger.info(f"Received analysis request from user '{current_user['username']}'")
-
-    cache_key = f"analysis:{hash(request.resume_text + request.jd_text)}"
-    cached = await redis_client.get(cache_key)
-
-    if cached:
-        logger.info("Cache hit for analysis request.")
-        return json.loads(cached)
-
-    logger.info("Cache miss for analysis request.")
-
+    logger.info(f"Received text analysis request from user '{current_user['username']}'")
+    
+    inputs = {
+        "resume_text": request.resume_text,
+        "jd_text": request.jd_text,
+    }
+    
     try:
-        result = await analyze_resume_and_jd(
-            gemini_client,
-            request.resume_text,
-            request.jd_text
-        )
+        final_state = None
+        async for state_update in agent.workflow.astream(inputs):
+            if "__end__" in state_update:
+                final_state = state_update.get('__end__', {})
 
-        await redis_client.set(cache_key, json.dumps(result), ex=3600)
+        result = final_state.get("final_result")
+        if not result:
+            raise HTTPException(status_code=500, detail="Agent workflow failed to produce a result.")
         return result
-
     except Exception as e:
-        logger.error(f"Analysis failed: {e}")
+        logger.error(f"Analysis failed during agent execution: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -217,22 +218,17 @@ async def analyze_video(
             video_path = tmp.name
 
         logger.info(f"Video saved to temporary file: {video_path}")
+        
+        inputs = {"video_file_path": video_path}
+        
+        final_state = None
+        async for state_update in agent.workflow.astream(inputs):
+            if "__end__" in state_update:
+                final_state = state_update.get('__end__', {})
 
-        cache_key = f"analysis:{hash(video_path)}"
-        cached = await redis_client.get(cache_key)
-
-        if cached:
-            logger.info("Cache hit for analysis request.")
-            return json.loads(cached)
-
-        logger.info("Cache miss for analysis request.")
-        result = await analyze_video_and_jd(gemini_client, video_path)
-        await redis_client.set(cache_key, json.dumps(result), ex=3600)
-        return result
-
-    except Exception as e:
-        logger.error(f"Video analysis failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Video analysis error: {e}")
+        result = final_state.get("final_result")
+        if not result:
+            raise HTTPException(status_code=500, detail="Agent workflow failed to produce a result for video.")
 
     finally:
         if 'video_path' in locals() and os.path.exists(video_path):

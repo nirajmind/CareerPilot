@@ -1,0 +1,6 @@
+Based on the following job description, generate a concise document of foundational knowledge that would be relevant for a candidate applying for this role.
+
+Focus on key concepts, technologies, and responsibilities mentioned. This knowledge will be used to ground an AI analysis of a candidate's resume against this job description.
+
+Job Description:
+{jd_text}

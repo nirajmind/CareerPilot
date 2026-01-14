@@ -1,0 +1,32 @@
+FROM nvidia/cuda:12.2.0-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+# Install Python + system deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    python3-venv \
+    build-essential \
+    libgl1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install GPU-enabled API dependencies
+COPY infra/docker/requirements.api.gpu.txt ./requirements.api.gpu.txt
+RUN pip install --no-cache-dir -r requirements.api.gpu.txt
+
+# Copy only what API needs
+COPY app/agent/ ./app/agent/
+COPY app/api/ ./app/api/
+COPY app/gemini/ ./app/gemini/
+COPY app/rag/ ./app/rag/
+COPY app/utils/ ./app/utils/
+
+EXPOSE 8000
+
+CMD ["python3", "-m", "uvicorn", "app.api.server:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,14 +1,15 @@
 # #️⃣ **GPU‑Accelerated Architecture Overview**  
-### **Design, Diagrams, and Problem/Solution Narrative**
+
+## **Design, Diagrams, and Problem/Solution Narrative**
 
 ---
 
-# 🧭 **1. Problem Statement**
+## 🧭 **1. Problem Statement**
 
 Modern multimodal LLMs like **Gemini Vision** are powerful but not infallible.  
 During real‑time video analysis, Gemini Vision can intermittently return:
 
-```
+```bash
 SAFETY_BLOCKED
 ```
 
@@ -23,13 +24,17 @@ This happens even for benign frames due to:
 This creates a **critical reliability gap**:
 
 ### ❌ The pipeline stalls  
+
 ### ❌ Frames are lost  
+
 ### ❌ User experience breaks  
+
 ### ❌ Real‑time analysis becomes impossible  
 
 To build a **resilient, production‑grade system**, we needed:
 
 ### **A fallback mechanism that is:**
+
 - **Fast**  
 - **Local**  
 - **GPU‑accelerated**  
@@ -40,7 +45,7 @@ This led to the design of a **GPU‑accelerated OCR fallback pipeline** running 
 
 ---
 
-# 🧩 **2. High‑Level Solution Overview**
+## 🧩 **2. High‑Level Solution Overview**
 
 The final architecture integrates:
 
@@ -54,14 +59,18 @@ The final architecture integrates:
 This ensures:
 
 ### ✔ Real‑time performance  
+
 ### ✔ Zero dropped frames  
+
 ### ✔ Full GPU utilization  
+
 ### ✔ Reproducible Docker builds  
+
 ### ✔ Local fallback independent of LLM safety filters  
 
 ---
 
-# 🏗️ **3. System Architecture Diagram (Mermaid)**
+## 🏗️ **3. System Architecture Diagram (Mermaid)**
 
 ```mermaid
 flowchart TD
@@ -106,7 +115,7 @@ flowchart TD
 
 ---
 
-# 🔄 **4. Data Flow Diagram (Mermaid)**
+## 🔄 **4. Data Flow Diagram (Mermaid)**
 
 ```mermaid
 sequenceDiagram
@@ -129,50 +138,59 @@ sequenceDiagram
 
 ---
 
-# 🧠 **5. Component Breakdown**
+## 🧠 **5. Component Breakdown**
 
 ### **FastAPI Backend**
+
 - Orchestrates the entire pipeline  
 - Handles frame ingestion  
 - Routes to Gemini or OCR fallback  
 - Exposes REST endpoints  
 
 ### **Gemini Vision Client**
+
 - Primary multimodal reasoning engine  
 - Used for semantic understanding  
 - Can return `SAFETY_BLOCKED`  
 
 ### **GPU OCR Fallback**
+
 - EasyOCR / PaddleOCR in GPU mode  
 - Uses PyTorch CUDA  
 - Extracts text from blocked frames  
 - Ensures no frame is lost  
 
 ### **PyTorch CUDA**
+
 - Provides GPU tensor acceleration  
 - Required by OCR engines  
 - Installed via CUDA 13.1 wheels  
 
 ### **Redis Cache**
+
 - Stores frame‑level results  
 - Prevents duplicate processing  
 
 ### **MongoDB**
+
 - Stores structured analysis results  
 - Supports downstream analytics  
 
 ### **Streamlit UI**
+
 - Displays real‑time analysis  
 - Shows OCR fallback events  
 
 ---
 
-# 🛡️ **6. Resilience Strategy**
+## 🛡️ **6. Resilience Strategy**
 
 ### **Primary Path**
+
 Gemini Vision → structured multimodal output
 
 ### **Fallback Path**
+
 If Gemini returns `SAFETY_BLOCKED`:
 
 1. Frame is passed to GPU OCR  
@@ -182,6 +200,7 @@ If Gemini returns `SAFETY_BLOCKED`:
 5. No frame is dropped  
 
 ### **Why this works**
+
 - OCR is deterministic  
 - GPU acceleration ensures speed  
 - Docker ensures reproducibility  
@@ -191,7 +210,7 @@ This creates a **fault‑tolerant multimodal pipeline**.
 
 ---
 
-# 🚀 **7. Deployment Flow**
+## 🚀 **7. Deployment Flow**
 
 ```mermaid
 flowchart LR
@@ -205,62 +224,69 @@ flowchart LR
 
 ---
 
-# 🔧 **8. Key Design Decisions**
+## 🔧 **8. Key Design Decisions**
 
 ### **1. CUDA wheels installed in Dockerfile, not requirements.txt**
+
 - Ensures deterministic GPU builds  
 - Avoids CPU fallback  
 - Keeps requirements portable  
 
 ### **2. WSL2 backend instead of Hyper‑V**
+
 - Required for `/dev/dxg`  
 - Enables GPU passthrough  
 
 ### **3. EasyOCR/PaddleOCR chosen for fallback**
+
 - Mature GPU support  
 - Fast inference  
 - Works well with PyTorch CUDA  
 
 ### **4. Gemini Vision used only when safe**
+
 - Avoids pipeline stalls  
 - Ensures consistent output  
 
 ---
 
-# 📈 **9. Performance Improvements**
+## 📈 **9. Performance Improvements**
 
-| Stage | CPU | GPU | Speedup |
-|-------|------|------|----------|
-| OCR (EasyOCR) | ~350ms | ~30–40ms | **8–12× faster** |
-| PaddleOCR | ~280ms | ~20–25ms | **10× faster** |
-| Frame throughput | ~3 FPS | ~25–30 FPS | **Real‑time** |
+| Stage                 | CPU       | GPU       | Speedup           |
+|-----------------------|-----------|-----------|-------------------|
+| OCR (EasyOCR)         | ~350ms    | ~30–40ms  | **8–12× faster**  |
+| PaddleOCR             | ~280ms    | ~20–25ms  | **10× faster**    |
+| Frame throughput      | ~3 FPS    | ~25–30 FPS| **Real‑time**     |
 
 ---
 
-# 🧪 **10. Final Verification Checklist**
+## 🧪 **10. Final Verification Checklist**
 
 ### **GPU**
+
 - `nvidia-smi` works inside Docker  
 - PyTorch sees CUDA  
 - OCR runs in GPU mode  
 
 ### **API**
+
 - Gemini Vision works  
 - OCR fallback triggers correctly  
 - No safety block crashes  
 
 ### **Deployment**
+
 - Docker Compose uses `runtime: nvidia`  
 - Environment variables load correctly  
 - Redis/Mongo connected  
 
 ---
 
-# 🎉 **Document 2 Complete**
+## 🎉 **Document 2 Complete**
 
 This Markdown document is now ready to drop into your repo under:
 
-```
+```bash
 docs/architecture.md
 ```
 
