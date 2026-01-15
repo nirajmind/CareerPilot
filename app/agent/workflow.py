@@ -4,6 +4,7 @@ import operator
 import json
 
 from app.gemini import GeminiClient, extract_text_from_video, embed
+from app.gemini.json_utils import safe_json_parse
 from app.rag import search, upsert
 from app.utils.logger import setup_logger
 
@@ -16,11 +17,11 @@ class AgentState(TypedDict):
     Defines the state of the agent's workflow.
     Handles both text and video inputs.
     """
-    resume_text: Optional[str]
-    jd_text: Optional[str]
-    video_file_path: Optional[str]
+    resume_text: str
+    jd_text: str
+    video_file_path: str
     analysis_cache_key: str
-    final_result: Annotated[str, operator.setitem]
+    final_result: dict
     vector_search_results: List[dict]
     generated_knowledge: str
 
@@ -174,14 +175,21 @@ class CareerPilotAgent:
         return {"vector_search_results": current_results}
 
     async def perform_final_analysis(self, state: AgentState):
-        """
-        Performs the final analysis by synthesizing the resume, JD,
-        and retrieved knowledge from the vector store.
-        """
         logger.info("Agent: Performing final analysis with retrieved knowledge.")
-        
-        context = "\n".join([res["text"] for res in state["vector_search_results"]])
+        logger.debug("=== CURRENT AGENT STATE ===\n" + json.dumps(state, indent=2, ensure_ascii=False))
+        # Validate required fields
+        if not state.get("resume_text") or not state.get("jd_text"):
+            logger.error("Missing resume_text or jd_text in state")
+            return {"final_result": {"error": "Missing resume or JD"}}
 
+        if not state.get("vector_search_results"):
+            logger.error("Missing vector_search_results in state")
+            return {"final_result": {"error": "No vector context"}}
+
+        # Build context safely
+        context = "\n".join([res.get("text", "") for res in state["vector_search_results"]])
+
+        # Build prompt
         prompt = await self.gemini_client.prompts.get("final_analysis")
         formatted_prompt = prompt.format(
             context=context,
@@ -189,13 +197,28 @@ class CareerPilotAgent:
             jd_text=state["jd_text"],
         )
 
+        # Call Gemini safely
         response = await self.gemini_client.call(
             "final_analysis",
             self.gemini_client.client.models.generate_content,
             model=self.gemini_client.chat_model,
             contents=formatted_prompt,
         )
-        
-        final_result = self.gemini_client.json_utils.safe_json_parse(response.text)
-        await self.redis_client.set(state["analysis_cache_key"], json.dumps(final_result), ex=3600)
+
+        if not response or not getattr(response, "text", None):
+            logger.error("Gemini returned empty response")
+            return {"final_result": {"error": "LLM returned empty response"}}
+
+        # Parse JSON safely
+        final_result = safe_json_parse(response.text)
+        logger.info("Agent: Final analysis completed.")
+        # Cache only if key exists
+        cache_key = state.get("analysis_cache_key")
+        if cache_key:
+            logger.info(f"Agent: Caching final result in Redis with key: {cache_key}.")
+            await self.redis_client.set(cache_key, json.dumps(final_result), ex=3600)
+        else:
+            logger.warning("Missing analysis_cache_key; skipping cache write")
+
         return {"final_result": final_result}
+

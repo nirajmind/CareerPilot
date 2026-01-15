@@ -7,4 +7,4 @@ Pillow==10.4.0
 imagehash==4.3.1
 easyocr==1.7.1
 numpy==1.26.4
-langgraph==0.1.7
+langgraph==0.3.6

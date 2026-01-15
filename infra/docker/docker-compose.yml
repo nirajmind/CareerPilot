@@ -6,10 +6,9 @@ services:
       dockerfile: Dockerfile.api.gpu
     container_name: careerpilot-api
     depends_on:
-      - mongo
       - redis
     environment:
-      MONGO_URI: mongodb://mongo:27017/careerpilot
+      MONGO_URI: ${MONGO_URI}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       GEMINI_API_KEY: ${GEMINI_API_KEY}
@@ -84,22 +83,22 @@ services:
 #          max-file: 3  
         
 
-  mongo:
-    image: mongo:6
-    container_name: mongo
-    restart: always
-    volumes:
-      - ../../data/mongo:/data/db
-      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
-    ports:
-      - "27017:27017"
-    networks:
-      - careerpilot-net
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "20m"
-        max-file: "5"  
+  #mongo:
+  #  image: mongo:6
+  #  container_name: mongo
+  #  restart: always
+  #  volumes:
+  #    - ../../data/mongo:/data/db
+  #    - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+  #  ports:
+  #    - "27017:27017"
+  #  networks:
+  #    - careerpilot-net
+  #  logging:
+  #    driver: "json-file"
+  #    options:
+  #      max-size: "20m"
+  #      max-file: "5"  
 
   redis:
     image: redis:7

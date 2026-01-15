@@ -1,0 +1,43 @@
+# This file is maintained automatically by "terraform init".
+# Manual edits may be lost in future updates.
+
+provider "registry.terraform.io/hashicorp/null" {
+  version = "3.2.4"
+  hashes = [
+    "h1:+Ag4hSb4qQjNtAS6gj2+gsGl7v0iB/Bif6zZZU8lXsw=",
+    "zh:59f6b52ab4ff35739647f9509ee6d93d7c032985d9f8c6237d1f8a59471bbbe2",
+    "zh:78d5eefdd9e494defcb3c68d282b8f96630502cac21d1ea161f53cfe9bb483b3",
+    "zh:795c897119ff082133150121d39ff26cb5f89a730a2c8c26f3a9c1abf81a9c43",
+    "zh:7b9c7b16f118fbc2b05a983817b8ce2f86df125857966ad356353baf4bff5c0a",
+    "zh:85e33ab43e0e1726e5f97a874b8e24820b6565ff8076523cc2922ba671492991",
+    "zh:9d32ac3619cfc93eb3c4f423492a8e0f79db05fec58e449dee9b2d5873d5f69f",
+    "zh:9e15c3c9dd8e0d1e3731841d44c34571b6c97f5b95e8296a45318b94e5287a6e",
+    "zh:b4c2ab35d1b7696c30b64bf2c0f3a62329107bd1a9121ce70683dec58af19615",
+    "zh:c43723e8cc65bcdf5e0c92581dcbbdcbdcf18b8d2037406a5f2033b1e22de442",
+    "zh:ceb5495d9c31bfb299d246ab333f08c7fb0d67a4f82681fbf47f2a21c3e11ab5",
+    "zh:e171026b3659305c558d9804062762d168f50ba02b88b231d20ec99578a6233f",
+    "zh:ed0fe2acdb61330b01841fa790be00ec6beaac91d41f311fb8254f74eb6a711f",
+  ]
+}
+
+provider "registry.terraform.io/mongodb/mongodbatlas" {
+  version     = "1.41.1"
+  constraints = "~> 1.18"
+  hashes = [
+    "h1:t6Cbvv+N2X6YthyZpJwxc3kbNE8EadfLso6B0y45hfA=",
+    "zh:07a68922c8a0aca320b60fbcf66e5c95bf46b0506a79eb44aab4f92f0b34df02",
+    "zh:135917d9624ab2407b4ff95f920f46ab912ed0e1eae8254baca2e278ec6fe701",
+    "zh:162e5fa542d5934ebf2756f09f425145e6532dbc1a40cfa8bc4cc0427c960ac9",
+    "zh:1b5959aecdb8ee60eae5a1be3c3331f4290e60b2cda638a2b1b150a773ba4a8a",
+    "zh:31036567d0fd0225c2f3e8029a2b4851c0b1ce3cb8af9c0c8829e580cd004ff5",
+    "zh:34068989345ac1b211ca1d3e80e2ea5260c25902d47e2db4e11b14da2dc81c74",
+    "zh:4d15bdb871cd31439766402bd3863175fd09176031ee93804bc8934030b466ac",
+    "zh:55ef4220110bbac41057d425ba2fb51cc4a4d58922257fe868e153aeb169528c",
+    "zh:7eb3eb0b999faadd5569841b02f94e308641b493b839bb6a76fbf1354e6966d0",
+    "zh:ec7048c4f52caf5ecff9820f2ac888bc3f715d0988112581ec167b59e6a17360",
+    "zh:f38cb6ee08c5b81aaebd6a0e5424e348a6f292144da3f4b0352f9023f2c9f807",
+    "zh:f46c68678050c4a524c82daddc30f46f7a34f18d495dc49c2149055f884c52ef",
+    "zh:f4e943ba43e7ed7d2f1162b903bd26cc76409f8b9433436dbeac1ca1ff3c4b24",
+    "zh:f8609443db65c86d73124f3ca484e6d14c80731708e333447cc4f9ca33bf2467",
+  ]
+}
