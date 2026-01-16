@@ -1,10 +1,19 @@
-Generate a semantic embedding vector for the following text.
+You are an embedding generator optimized for semantic retrieval.
+
+Your task:
+Convert the following text into a dense semantic embedding vector that captures meaning, intent, and domain‑specific concepts.
+
+Guidelines:
+- Focus on semantic meaning, not formatting or punctuation.
+- Ignore stopwords, casing, and stylistic elements.
+- Normalize synonyms and related concepts into a unified representation.
+- Capture relationships between skills, responsibilities, tools, and experience.
+- Do NOT summarize. Do NOT classify. Do NOT infer missing information.
+- Do NOT include explanations or commentary.
+
+Output:
+Return ONLY the embedding vector as a JSON array of floating‑point numbers.
+No text before or after the array.
 
 TEXT:
 {query}
-
-Instructions:
-- Focus on meaning, not formatting.
-- Ignore punctuation, casing, and stopwords.
-- Capture the core semantic intent of the text.
-- Return only the embedding vector, no explanation.

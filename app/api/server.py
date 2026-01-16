@@ -187,14 +187,14 @@ async def analyze(request: AnalysisRequest, current_user: dict = Depends(get_cur
     }
     
     try:
-        final_state = None
-        async for state_update in agent.workflow.astream(inputs):
-            if "__end__" in state_update:
-                final_state = state_update.get('__end__', {})
 
+        final_state = await agent.workflow.ainvoke(inputs)
+        logger.info("Graph workflow completed for text.")
         result = final_state.get("final_result")
         if not result:
             raise HTTPException(status_code=500, detail="Agent workflow failed to produce a result.")
+        
+        logger.info(f"Analysis completed successfully with response as - '{result}'")
         return result
     except Exception as e:
         logger.error(f"Analysis failed during agent execution: {e}")
@@ -225,106 +225,21 @@ async def analyze_video(
 
         # Run the workflow (langgraph 0.2.3)
         final_state = await agent.workflow.ainvoke(inputs)
-
+        logger.info("Graph workflow completed for video.")
         # Validate workflow output
         if not isinstance(final_state, dict):
             raise HTTPException(500, "Workflow returned invalid state")
 
-        raw_result = final_state["final_result"] 
-        
-        # 3. Ensure we have a dict from JSON 
-        if isinstance(raw_result, str): 
-            try: 
-                payload = json.loads(raw_result) 
-            except json.JSONDecodeError as e: 
-                logger.error(f"Failed to parse LLM JSON: {e} | raw={raw_result!r}") 
-                raise HTTPException(status_code=500, detail="LLM returned invalid JSON") 
-        elif isinstance(raw_result, dict): 
-            # Already a dict, but may have come from Python repr; still usable as a mapping 
-            payload = raw_result 
+        result = final_state.get("final_result")
+        if not isinstance(result, dict):
+            raise HTTPException(500, "Workflow failed to produce final_result")
 
-        else: 
-            logger.error(f"Unexpected final_result type: {type(raw_result)}") 
-            raise HTTPException(status_code=500, detail="Unexpected agent result format") 
-        # 4. Normalize keys from LLM structure -> AnalysisResponse schema 
-        fit_graph_src = payload.get("FitGraph", {}) or {} 
-        resume_src = payload.get("ResumeAnalysis", {}) or {} 
-        feedback_src = payload.get("ActionableFeedback", {}) or {} 
-        interview_src = payload.get("InterviewPrep", {}) or {} 
-        # ---- FitGraph mapping ---- 
-        fitgraph = { 
-            "match_score": fit_graph_src.get("overall_match_percentage", 0), 
-            "matching_skills": [ 
-                s for s in fit_graph_src.get("skills_breakdown", []) 
-                if s.get("match_level") not in (None, "None") 
-                ],
-            "missing_skills": [ 
-                s for s in fit_graph_src.get("skills_breakdown", []) 
-                if s.get("match_level") == "None" 
-                ], 
-                # You can derive these however you like; here we just default 
-                "growth_potential": [], 
-                "risk_areas": [], 
-                } 
-        # ---- ResumeAnalysis mapping ---- 
-        resume_analysis = { 
-            # If you want a summary, you can synthesize one later; keep it non-null 
-            "summary": "", 
-            "strengths": resume_src.get("strengths", []) or [], 
-            "gaps": resume_src.get("weaknesses", []) or [], 
-            "recommendations": feedback_src.get("resume_optimization", []) or [], 
-            } 
-        # ---- JD Analysis mapping ---- 
-        jd_analysis = { 
-            "summary": "", 
-            "must_haves": resume_src.get("keywords_missing", []) or [], 
-            "nice_to_haves": [], 
-            # you can derive from context later 
-            "hidden_signals": [], 
-            } 
-        # ---- Skill Matrix mapping ---- 
-        skill_matrix = { 
-            "strengths": resume_src.get("keywords_found", []) or [], 
-            "gaps": resume_src.get("keywords_missing", []) or [], 
-            "emerging": [], 
-            } 
-        # ---- Preparation Plan mapping ---- 
-        priority = {
-            "high": feedback_src.get("critical_improvements", []),
-            "medium": feedback_src.get("resume_optimization", []),
-            "low": []
-            }
-        preparation_plan = {
-            "steps": feedback_src.get("critical_improvements", []),
-            "priority": priority
-            }
+        # Return the final result (FastAPI will validate against AnalysisResponse)
+        return result
 
-        # ---- Mock Interview mapping ---- 
-        mock_interview = { 
-            "questions": interview_src.get("technical_questions", []) or [], 
-            "follow_ups": [], 
-            "behavioral": [], 
-            } 
-        # ---- Resume rewrite & next steps (keep non-null) ---- 
-        resume_rewrite = "" 
-        # you can ask the LLM for this later 
-        next_steps = feedback_src.get("critical_improvements", []) or [] 
-        # 5. Build the Pydantic response model 
-        response = AnalysisResponse( 
-            fitgraph=fitgraph, 
-            resume_analysis=resume_analysis, 
-            jd_analysis=jd_analysis, 
-            skill_matrix=skill_matrix, 
-            preparation_plan=preparation_plan, 
-            mock_interview=mock_interview, 
-            resume_rewrite=resume_rewrite, 
-            next_steps=next_steps, 
-            ) 
-        
-        return response 
-    
-    finally: 
-        if video_path and os.path.exists(video_path): 
+    finally:
+        # Cleanup temp file
+        if os.path.exists(video_path):
             os.remove(video_path)
 
 # ---------------------------------------------------------
