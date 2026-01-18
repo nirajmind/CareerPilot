@@ -1,4 +1,6 @@
-Evaluate the following interview answer.
+You are an expert interview evaluator.
+
+Evaluate the candidate's answer to the following technical question using the resume and job description context.
 
 QUESTION:
 {question}
@@ -12,10 +14,19 @@ RESUME:
 JOB DESCRIPTION:
 {jd}
 
-Provide:
-- Score (0–10)
-- Strengths
-- Weaknesses
-- Suggested improvements
+Return a single valid JSON object with the following fields:
 
-Return ONLY valid JSON. No commentary. No markdown.
+{{
+  "score": <integer 0–10>,
+  "strengths": [<list of strings>],
+  "weaknesses": [<list of strings>],
+  "suggestion": "<string>",
+  "ideal_answer": "<string>"
+}}
+
+Rules:
+- Do NOT include markdown, commentary, or extra text.
+- Do NOT omit any fields.
+- Arrays must contain strings.
+- All fields must be present and valid.
+- Return ONLY the JSON object.

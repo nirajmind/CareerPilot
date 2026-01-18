@@ -22,6 +22,7 @@ COPY app/api/ ./app/api/
 COPY app/gemini/ ./app/gemini/
 COPY app/rag/ ./app/rag/
 COPY app/utils/ ./app/utils/
+COPY app/db/ ./app/db/
 EXPOSE 8000
 
 CMD ["uvicorn", "app.api.server:app", "--host", "0.0.0.0", "--port", "8000"]

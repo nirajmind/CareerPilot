@@ -3,6 +3,7 @@ fastapi==0.115.2
 uvicorn==0.32.0
 python-dotenv==1.0.1
 pydantic==2.9.2
+email-validator==2.3.0
 python-multipart==0.0.9
 langgraph==0.3.6
 

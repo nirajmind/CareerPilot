@@ -26,6 +26,7 @@ COPY app/api/ ./app/api/
 COPY app/gemini/ ./app/gemini/
 COPY app/rag/ ./app/rag/
 COPY app/utils/ ./app/utils/
+COPY app/db/ ./app/db/
 
 EXPOSE 8000
 

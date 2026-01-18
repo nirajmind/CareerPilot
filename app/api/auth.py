@@ -46,20 +46,33 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
+        email: str = payload.get("email")
         roles: List[str] = payload.get("roles", [])
-        if username is None:
+
+        if not username or not email:
             raise credentials_exception
-        token_data = TokenData(username=username, roles=roles)
+
     except JWTError:
         raise credentials_exception
-    
-    user = await mongo_handler.get_user(username=token_data.username)
+
+    # Fetch user from DB
+    user = await mongo_handler.get_user(username=username)
+
     if user is None or not user.get("is_active"):
         raise credentials_exception
-    return user
+
+    # Return normalized user object
+    return {
+        "username": user["username"],
+        "email": user["email"],
+        "roles": user["roles"],
+        "is_active": user["is_active"]
+    }
+
 
 # --- Role-Based Dependency ---
 def require_role(required_role: str):

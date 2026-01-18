@@ -1,3 +1,4 @@
+from datetime import datetime
 from fastapi import FastAPI, HTTPException, Request, Depends, status, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
@@ -23,6 +24,8 @@ from .schemas import (
     AnalysisRequest, AnalysisResponse, EvaluateAnswerRequest,
     EvaluateAnswerResponse, IngestRequest, UserCreate, Token, User
 )
+from app.api.mock_interview import router as mock_router
+from app.api.analysis_history import router as analysis_history_router
 
 # --- Gemini Modular Imports ---
 from app.gemini import (
@@ -56,6 +59,8 @@ agent = CareerPilotAgent(gemini_client=gemini_client, redis_client=redis_client)
 
 # --- FastAPI App ---
 app = FastAPI(title=API_TITLE, version=API_VERSION)
+app.include_router(mock_router)
+app.include_router(analysis_history_router)
 
 @app.exception_handler(Exception) 
 async def global_exception_handler(request: Request, exc: Exception): 
@@ -128,10 +133,13 @@ async def register_user(user: UserCreate):
 
     hashed_password = get_password_hash(user.password)
     await mongo_handler.create_user({
-        "username": user.username,
-        "hashed_password": hashed_password,
-        "roles": user.roles,
-        "is_active": True,
+        "email": user.email, 
+        "username": user.username, 
+        "password_hash": hashed_password,
+        "roles": user.roles, 
+        "is_active": True, 
+        "created_at": datetime.now(), 
+        "updated_at": datetime.now(),
     })
 
     return {"message": "User created successfully"}
@@ -141,7 +149,7 @@ async def register_user(user: UserCreate):
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     user = await mongo_handler.get_user(form_data.username)
 
-    if not user or not verify_password(form_data.password, user["hashed_password"]):
+    if not user or not verify_password(form_data.password, user["password_hash"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -155,7 +163,8 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         )
 
     token = create_access_token(
-        data={"sub": user["username"], "roles": user["roles"]}
+        data={"sub": user["username"], "roles": user["roles"], 
+              "email": user["email"]}
     )
 
     return {"access_token": token, "token_type": "bearer"}
