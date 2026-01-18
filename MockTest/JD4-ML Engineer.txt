@@ -1,0 +1,13 @@
+JD #4 - ML Engineer (3-5 years)
+Role: ML Engineer
+Skills Required:
+- Python
+- TensorFlow/PyTorch
+- Feature engineering
+- Model deployment
+- Vector DBS
+- Cloud ML services
+Responsibilities:
+- Build ML pipelines
+- Deploy models
+- Monitor performance

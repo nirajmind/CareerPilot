@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pkl
+*.log
+
+# Virtualenvs
+.venv/
+venv/
+env/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data / artifacts
+*.sqlite3
+*.db
+logs/
+tmp/
+.cache/
+.dist/
+
+# Node / frontend (if any)
+node_modules/
+dist/
+build/
+
+# Docker
+docker-images/

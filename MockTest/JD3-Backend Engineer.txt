@@ -1,0 +1,13 @@
+JD #3 - Backend Engineer (2-4 years)
+Role: Backend Engineer
+Skills Required:
+- Python, FastAPI/Django
+- PostgreSQL
+- Redis
+- Docker
+- Microservices
+Responsibilities:
+- Build scalable APIs
+- Implement caching
+- Write unit tests
+- CI/CD pipelines

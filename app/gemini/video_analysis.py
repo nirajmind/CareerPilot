@@ -1,6 +1,4 @@
-from asyncio.log import logger
-
-from app.gemini.exceptions import GeminiSafetyError
+import json
 from .video_extraction import (
     compute_video_hash,
     extract_raw_frames,
@@ -10,71 +8,55 @@ from .video_extraction import (
     validate_extraction,
 )
 from .json_utils import safe_json_parse
-from .text_analysis import analyze_resume_and_jd
+from .logger import logger
+from .exceptions import GeminiSafetyError
 
-async def analyze_video_and_jd(client, video_path):
+async def extract_text_from_video(client, video_path: str) -> dict:
+    """
+    Extracts resume and job description text from a video file.
+    It uses Gemini Vision with an OCR fallback and caches the result in Redis.
+    """
     video_hash = compute_video_hash(video_path)
-
     if client.redis:
-        cached = await client.redis.get(f"video_extract:{video_hash}")
-        if cached:
-            data = safe_json_parse(cached)
-            return await analyze_resume_and_jd(
-                data["resume_text"], data["jd_text"]
-            )
+        cached_text = await client.redis.get(f"video_extract:{video_hash}")
+        if cached_text:
+            logger.info(f"Video text cache HIT for hash {video_hash}")
+            return safe_json_parse(cached_text)
+    
+    logger.info(f"Video text cache MISS for hash {video_hash}. Processing video.")
 
-    logger.info("[Video] Extracting raw frames")
-    raw = extract_raw_frames(video_path)
-    logger.info(f"[Video] Raw frames count: {len(raw)}")
-    logger.info("[Video] Deduplicating frames")
-    unique = dedupe_frames(raw)
-    logger.info(f"[Video] Unique frames count: {len(unique)}") 
-    logger.info("[Video] Preparing frames for Gemini")
-    prepared = prepare_frames(unique)
-    logger.info(f"[Video] Prepared frames count: {len(prepared)}")
+    raw_frames = extract_raw_frames(video_path)
+    unique_frames = dedupe_frames(raw_frames)
+    prepared_frames = prepare_frames(unique_frames)
+
     prompt = await client.prompts.get("analyze_video")
-    content = [prompt] + prepared
-    logger.debug(
-    "[Gemini] Vision input summary",
-    extra={
-        "frame_count": len(prepared),
-        "prompt_length": len(prompt),
-        "model": client.vision_model,
-        }
-    )
-
-    try: 
-        resp = await client.call( 
-            "video_text_extraction", 
-            client.client.models.generate_content, 
-            model=client.vision_model, 
-            contents=content, 
-            generation_config={"response_mime_type": "application/json"}, 
-            safety_settings=client.safety(),
-            ) 
-    except Exception as e: 
-        # Gemini Vision blocked BEFORE generating JSON 
-        logger.warning(f"[Gemini] Vision blocked early: {e}") 
-        extracted = ocr_fallback(prepared) 
-        return await analyze_resume_and_jd(
-             client, extracted["resume_text"], extracted["jd_text"] 
-            )
-
-    if hasattr(resp, "prompt_feedback"): 
-        logger.warning( "[Gemini] Prompt feedback", extra={"feedback": resp.prompt_feedback} ) 
-        
-    if hasattr(resp, "candidates"): 
-        for c in resp.candidates: 
-            if hasattr(c, "safety_ratings"): 
-                logger.warning( "[Gemini] Safety ratings", extra={"ratings": c.safety_ratings} )
+    content = [prompt] + prepared_frames
+    logger.debug(f"Gemini Vision content: {content}")
 
     try:
-        extracted = validate_extraction(safe_json_parse(resp.text))
-    except GeminiSafetyError:
-        logger.warning("Vision blocked — falling back to OCR")
-        extracted = ocr_fallback(prepared)
+        resp = await client.call(
+            "video_text_extraction",
+            client.client.models.generate_content,
+            model=client.vision_model,
+            contents=content,
+            generation_config={"response_mime_type": "application/json"},
+            safety_settings=client.safety(),
+        )
+        logger.debug(f"Gemini Vision raw response: {resp.text}")
+        parsed_response = safe_json_parse(resp.text)
+        logger.debug(f"Gemini Vision parsed response: {parsed_response}")
+        extracted_text = validate_extraction(parsed_response)
+        logger.info(f"Gemini Vision validation successful.")
+
+
+    except (Exception, GeminiSafetyError) as e:
+        logger.warning(f"Gemini Vision failed or was blocked: {e}. Falling back to OCR.")
+        extracted_text = ocr_fallback(prepared_frames)
+        logger.debug(f"OCR fallback result: {extracted_text}")
 
     if client.redis:
-        await client.redis.set(f"video_extract:{video_hash}", extracted)
-
-    return await analyze_resume_and_jd(client, extracted["resume_text"], extracted["jd_text"])
+        # Use a different key for extracted text to not conflict with final analysis
+        await client.redis.set(f"video_extract:{video_hash}", json.dumps(extracted_text), ex=3600)
+    
+    logger.info(f"Returning extracted text from video: {extracted_text}")
+    return extracted_text

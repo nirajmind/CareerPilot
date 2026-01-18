@@ -1,0 +1,11 @@
+JD #1 - Python Developer (Fresher-Friendly)
+Role: Python Developer
+Skills Required:
+- Python basics
+- Data structures
+SQL
+REST API fundamentals
+- Git
+Nice to Have:
+- Flask or FastAPI
+- Basic cloud knowledge

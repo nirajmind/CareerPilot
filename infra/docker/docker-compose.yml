@@ -3,13 +3,12 @@ services:
   api:
     build:
       context: ../../
-      dockerfile: Dockerfile.api
+      dockerfile: Dockerfile.api.gpu
     container_name: careerpilot-api
     depends_on:
-      - mongo
       - redis
     environment:
-      MONGO_URI: mongodb://mongo:27017/careerpilot
+      MONGO_URI: ${MONGO_URI}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       GEMINI_API_KEY: ${GEMINI_API_KEY}
@@ -57,41 +56,49 @@ services:
         max-size: "10m"
         max-file: "3"  
 
-  agent:
-    build:
-      context: ../../
-      dockerfile: Dockerfile.agent
-    container_name: careerpilot-agent
-    depends_on:
-      - mongo
-      - redis
-    environment:
-      MONGO_URI: mongodb://mongo:27017/careerpilot
-      REDIS_HOST: redis
-    networks:
-      - careerpilot-net
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"  
+#  agent:
+#      build:
+#        context: ../../
+#        dockerfile: Dockerfile.agent
+#      container_name: careerpilot-agent
+#      depends_on:
+#        - mongo
+#        - redis
+#      environment:
+#        MONGO_URI: mongodb://mongo:27017/careerpilot
+#        REDIS_HOST: redis
+#        REDIS_PORT: 6379
+#        GEMINI_API_KEY: ${GEMINI_API_KEY}
+#        JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+#        GEMINI_MODEL: ${GEMINI_MODEL}
+#        LOG_LEVEL: ${LOG_LEVEL}
+#        GIT_PYTHON_REFRESH: quiet
+#        GEMINI_VISION_MODEL: ${GEMINI_VISION_MODEL}
+#      networks:
+#        - careerpilot-net
+#      logging:
+#        driver: json-file
+#        options:
+#          max-size: 10m
+#          max-file: 3  
+        
 
-  mongo:
-    image: mongo:6
-    container_name: mongo
-    restart: always
-    volumes:
-      - ../../data/mongo:/data/db
-      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
-    ports:
-      - "27017:27017"
-    networks:
-      - careerpilot-net
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "20m"
-        max-file: "5"  
+  #mongo:
+  #  image: mongo:6
+  #  container_name: mongo
+  #  restart: always
+  #  volumes:
+  #    - ../../data/mongo:/data/db
+  #    - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+  #  ports:
+  #    - "27017:27017"
+  #  networks:
+  #    - careerpilot-net
+  #  logging:
+  #    driver: "json-file"
+  #    options:
+  #      max-size: "20m"
+  #      max-file: "5"  
 
   redis:
     image: redis:7

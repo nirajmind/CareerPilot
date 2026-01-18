@@ -2,9 +2,15 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-COPY app/ ./app/
-COPY requirements.txt .
+# Install only agent dependencies
+COPY infra/docker/requirements.agent.txt .
+RUN pip install --no-cache-dir -r requirements.agent.txt
 
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy only the RAG-related code
+COPY app/agent/ ./app/agent/
+COPY app/api/ ./app/api/
+COPY app/gemini/ ./app/gemini/
+COPY app/rag/ ./app/rag/
+COPY app/utils/ ./app/utils/
 
-CMD ["python", "app/agent/workflow.py"]
+CMD ["python", "-m", "app.rag.agent_worker", "--help"]

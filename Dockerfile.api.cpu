@@ -1,0 +1,28 @@
+FROM python:3.10-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+WORKDIR /app
+
+# System-level deps for OpenCV/EasyOCR (CPU-safe)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libgl1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install API CPU dependencies only
+COPY infra/docker/requirements.api.cpu.txt ./requirements.api.cpu.txt
+RUN pip install --no-cache-dir -r requirements.api.cpu.txt
+
+# Copy only what API needs (adjust paths if needed)
+COPY app/agent/ ./app/agent/
+COPY app/api/ ./app/api/
+COPY app/gemini/ ./app/gemini/
+COPY app/rag/ ./app/rag/
+COPY app/utils/ ./app/utils/
+COPY app/db/ ./app/db/
+EXPOSE 8000
+
+CMD ["uvicorn", "app.api.server:app", "--host", "0.0.0.0", "--port", "8000"]
