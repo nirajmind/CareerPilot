@@ -3,7 +3,7 @@ services:
   api:
     build:
       context: ../../
-      dockerfile: Dockerfile.api.gpu
+      dockerfile: Dockerfile.api.cpu
     container_name: careerpilot-api
     depends_on:
       - redis
