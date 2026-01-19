@@ -20,7 +20,7 @@ services:
       GIT_PYTHON_REFRESH: quiet
       GEMINI_VISION_MODEL: ${GEMINI_VISION_MODEL}
     ports:
-      - "8000:8000"
+      - "8585:8585"
     networks:
       - careerpilot-net
     logging:
@@ -45,7 +45,7 @@ services:
     depends_on:
       - api
     environment:
-      BACKEND_URL: http://api:8000
+      BACKEND_URL: http://api:8585
     ports:
       - "8501:8501"
     networks:

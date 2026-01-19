@@ -16,6 +16,7 @@ spec:
       containers:
       - name: ui
         image: your-docker-repo/careerpilot-ui:latest # IMPORTANT: Replace with your actual image path
+        imagePullPolicy: IfNotPresent
         resources:
           requests:
             memory: "256Mi"
@@ -25,6 +26,9 @@ spec:
             cpu: "500m"
         ports:
         - containerPort: 8501
+        env:
+        - name: BACKEND_URL
+          value: "http://api:8585"
 
 ---
 apiVersion: v1

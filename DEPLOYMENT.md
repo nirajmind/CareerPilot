@@ -22,6 +22,73 @@ Before you begin, ensure you have the following:
 6. **Your domain name (`careerpilot.duckdns.org`) pointing to your VM's public IP address.**
 7. **Your Gemini API Key.**
 
+The steps below will guide you through installing the necessary software (Kubernetes, Docker, etc.) on your VM.
+
+---
+
+## Step 0: Initial VM Setup
+
+Run these commands on your new VM to install all the required software for hosting CareerPilot.
+
+1. **Update Your System:**
+
+```bash
+    sudo apt update && sudo apt upgrade -y
+```
+
+1. **Install Docker:**
+The application images are built with Docker.
+
+```bash
+    # Install prerequisites
+    sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
+
+    # Add Docker's official GPG key
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+    # Set up the stable repository
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    
+    # Install Docker Engine
+    sudo apt update
+    sudo apt install -y docker-ce docker-ce-cli containerd.io
+
+    # Add your user to the 'docker' group to run docker commands without sudo
+    sudo usermod -aG docker ${USER}
+
+    # You will need to log out and log back in for this change to take effect.
+    echo "Please log out and log back in to apply Docker group permissions."
+```
+
+1. **Install Kubernetes (K3s):**
+
+K3s is a lightweight, certified Kubernetes distribution perfect for a single-node setup. It includes `kubectl` and `containerd`.
+
+```bash
+    # Install k3s
+    curl -sfL https://get.k3s.io | sh -
+
+    # K3s automatically creates a kubeconfig file at /etc/rancher/k3s/k3s.yaml.
+    # To allow kubectl to work without sudo, set the KUBECONFIG environment variable.
+    # Add this line to your ~/.bashrc or ~/.zshrc and then source it.
+    echo 'export KUBECONFIG=/etc/rancher/k3s/k3s.yaml' >> ~/.bashrc
+    source ~/.bashrc
+    
+    # Verify that kubectl can connect to the cluster
+    kubectl get nodes
+```
+
+1. **Install Caddy:**
+
+Caddy will act as our reverse proxy and handle HTTPS automatically.
+
+```bash
+    sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https
+    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+    sudo apt update
+    sudo apt install caddy
+    ```
 ---
 
 ## Step 1: Build and Push Docker Images
@@ -32,23 +99,26 @@ For each service (`api`, `agent`, `ui`), you need to build a Docker image and pu
 
 ```bash
     docker login
-    ```
+```
 
-2.  **Build the images:**
-    Replace `your-docker-username` with your actual username or the name of your registry.
-    ```bash
+1. **Build the images:**
+
+Replace `your-docker-username` with your actual username or the name of your registry.
+
+```bash
     # From the project root directory
     docker build -t your-docker-username/careerpilot-api:1.0.0 -f Dockerfile.api .
     docker build -t your-docker-username/careerpilot-agent:1.0.0 -f Dockerfile.agent .
     docker build -t your-docker-username/careerpilot-ui:1.0.0 -f Dockerfile.ui .
-    ```
+```
 
-3.  **Push the images to the registry:**
-    ```bash
+1. **Push the images to the registry:**
+
+```bash
     docker push your-docker-username/careerpilot-api:1.0.0
     docker push your-docker-username/careerpilot-agent:1.0.0
     docker push your-docker-username/careerpilot-ui:1.0.0
-    ```
+```
 
 ---
 
@@ -56,11 +126,12 @@ For each service (`api`, `agent`, `ui`), you need to build a Docker image and pu
 
 Before deploying, you must update the `image` paths in the Kubernetes deployment files to point to the images you just pushed.
 
--   `infra/k8s/api-deployment.yml`
--   `infra/k8s/agent-deployment.yml`
--   `infra/k8s/ui-deployment.yml`
+- `infra/k8s/api-deployment.yml`
+- `infra/k8s/agent-deployment.yml`
+- `infra/k8s/ui-deployment.yml`
 
 **Example:** In `api-deployment.yml`, change this line:
+
 ```yaml
 image: your-docker-repo/careerpilot-api:latest
 ```
@@ -83,21 +154,25 @@ Apply the Kubernetes manifests in the correct order. These commands should be ru
 
 ```bash
     kubectl apply -f infra/k8s/namespace.yml
-    ```
+```
 
-2.  **Create the Gemini API Key Secret:**
-    Replace `your-actual-api-key` with your real Gemini API key.
-    ```bash
+1. **Create the Gemini API Key Secret:**
+
+Replace `your-actual-api-key` with your real Gemini API key.
+
+```bash
     kubectl create secret generic gemini-api-key-secret \
       --namespace=careerpilot \
       --from-literal=api-key='your-actual-api-key'
-    ```
+```
 
-3.  **Deploy all other resources:**
-    This command applies all the remaining manifests (`mongo`, `redis`, `api`, `agent`, `ui`).
-    ```bash
+1. **Deploy all other resources:**
+
+This command applies all the remaining manifests (`mongo`, `redis`, `api`,`agent`, `ui`).
+
+```bash
     kubectl apply -f infra/k8s/
-    ```
+```
 
 ---
 
@@ -124,25 +199,29 @@ After applying the manifests, you can check the status of your deployment.
 
 ```bash
     kubectl get pods -n careerpilot
-    ```
-    You should see pods for `mongo`, `redis`, `api`, `agent`, and `ui` with a status of `Running`.
+```
 
-2.  **Check the services:**
-    ```bash
+You should see pods for `mongo`, `redis`, `api`, `agent`, and `ui` with a status of `Running`.
+
+1. **Check the services:**
+
+```bash
     kubectl get services -n careerpilot
-    ```
-    You should see the services for `mongo`, `redis`, `api`, and `ui`. Note the `NodePort` for the `ui` service.
+```
 
-3.  **Check the logs of a pod (for troubleshooting):**
-    ```bash
+You should see the services for `mongo`, `redis`, `api`, and `ui`. Note the `NodePort` for the `ui` service.
+
+1. **Check the logs of a pod (for troubleshooting):**
+
+```bash
     # Get the name of your API pod first
     kubectl get pods -n careerpilot
 
     # Then check its logs
     kubectl logs <name-of-api-pod> -n careerpilot
-    ```
+```
 
-4.  **Access your application:**
+1. **Access your application:**
     Once all pods are running, you should be able to access your application at `https://careerpilot.duckdns.org`.
 
 ---
@@ -152,10 +231,11 @@ After applying the manifests, you can check the status of your deployment.
 If a deployment fails, the quickest way to roll back is to apply the manifests from a previous, stable commit in your Git history.
 
 For a specific deployment, you can use `kubectl rollout undo`:
-```bash
-# Check the history of a deployment
-kubectl rollout history deployment/api -n careerpilot
 
-# Roll back to the previous version
-kubectl rollout undo deployment/api -n careerpilot
+```bash
+    # Check the history of a deployment
+    kubectl rollout history deployment/api -n careerpilot
+
+    # Roll back to the previous version
+    kubectl rollout undo deployment/api -n careerpilot
 ```

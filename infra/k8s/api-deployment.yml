@@ -16,6 +16,7 @@ spec:
       containers:
       - name: api
         image: your-docker-repo/careerpilot-api:latest # IMPORTANT: Replace with your actual image path
+        imagePullPolicy: IfNotPresent
         resources:
           requests:
             memory: "128Mi"
@@ -24,19 +25,50 @@ spec:
             memory: "512Mi"
             cpu: "500m"
         ports:
-        - containerPort: 8000
+        - containerPort: 8585
         env:
         - name: MONGO_URI
-          value: "mongodb://mongo:27017/careerpilot"
+          valueFrom:
+            secretKeyRef:
+              name: careerpilot-secrets
+              key: MONGO_URI
         - name: REDIS_HOST
-          value: "redis"
+          valueFrom:
+            secretKeyRef:
+              name: careerpilot-secrets
+              key: REDIS_HOST
         - name: REDIS_PORT
-          value: "6379"
+          valueFrom:
+            secretKeyRef:
+              name: careerpilot-secrets
+              key: REDIS_PORT
+        - name: GIT_PYTHON_REFRESH
+          value: "quiet"
         - name: GEMINI_API_KEY
           valueFrom:
             secretKeyRef:
-              name: gemini-api-key-secret
-              key: api-key
+              name: careerpilot-secrets
+              key: GEMINI_API_KEY
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: careerpilot-secrets
+              key: JWT_SECRET_KEY
+        - name: GEMINI_MODEL
+          valueFrom:
+            secretKeyRef:
+              name: careerpilot-secrets
+              key: GEMINI_MODEL
+        - name: GEMINI_VISION_MODEL
+          valueFrom:
+            secretKeyRef:
+              name: careerpilot-secrets
+              key: GEMINI_VISION_MODEL
+        - name: LOG_LEVEL
+          valueFrom:
+            secretKeyRef:
+              name: careerpilot-secrets
+              key: LOG_LEVEL
 
 ---
 apiVersion: v1
@@ -49,5 +81,5 @@ spec:
     app: api
   ports:
   - protocol: TCP
-    port: 8000
-    targetPort: 8000
+    port: 8585
+    targetPort: 8585
