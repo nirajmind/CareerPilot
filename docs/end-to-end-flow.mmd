@@ -5,10 +5,10 @@ sequenceDiagram
     participant FastAPI as FastAPI Backend
     participant Agent as LangGraph Agent
     participant Gemini as Gemini API
-    participant MongoDB as MongoDB
+    participant MongoDB as MongoDB Atlas
     participant Redis as Redis Cache
 
-    %% Authentication Flow %%
+    %% Authentication Flow (Stays the same) %%
     User->>+StreamlitUI: 1. Enters Username & Password
     StreamlitUI->>+FastAPI: 2. POST /auth/token (form data)
     FastAPI->>+MongoDB: 3. Find user and verify password
@@ -17,48 +17,52 @@ sequenceDiagram
     FastAPI-->>-StreamlitUI: 6. Return JWT Access Token
     StreamlitUI->>User: 7. Store token in session state
 
-    %% Main Application Flow (Authenticated) %%
-    User->>+StreamlitUI: 8. Upload Resume & JD
-    StreamlitUI->>+FastAPI: 9. POST /analyze (with Bearer Token)
+    %% Main Analysis Flow (Text or Video) %%
+    alt Text Input
+        User->>+StreamlitUI: 8a. Upload Resume & JD Text
+        StreamlitUI->>+FastAPI: 9a. POST /stream/agent (with Bearer Token)
+    else Video Input
+        User->>+StreamlitUI: 8b. Upload Video File
+        StreamlitUI->>+FastAPI: 9b. POST /stream/agent (multipart/form-data with Bearer Token)
+    end
     
     FastAPI->>FastAPI: 10. Verify JWT and user role
-    FastAPI->>+Agent: 11. Start Analysis Workflow
+    FastAPI->>+Agent: 11. Invoke Analysis Workflow (with text or video path)
     
-    Agent->>+Redis: 12. Check for cached result
-    Redis-->>-Agent: 13. Return cached data or nil
-    
-    alt Cache Miss
-        Agent->>+Gemini: 14a. Analyze Resume & JD
-        Gemini-->>-Agent: 15a. Structured JSON output
-        
-        Agent->>+MongoDB: 16a. Perform RAG Vector Search
-        MongoDB-->>-Agent: 17a. Return relevant documents
-        
-        Agent->>Agent: 18a. Generate FitGraph & Insights
-        
-        Agent->>+Redis: 19a. Cache the final result
-    else Cache Hit
-        Note over Agent: 14b. Use cached analysis
+    alt Video Input Path
+        Agent->>+Gemini: 12a. Extract Text from Video Frames (Vision API)
+        Gemini-->>-Agent: 13a. Return structured Resume & JD text
     end
 
-    Agent-->>-FastAPI: 20. Return final analysis to API
-    FastAPI-->>-StreamlitUI: 21. Stream final response
-    StreamlitUI-->>-User: 22. Display FitGraph & Insights
+    Agent->>+Redis: 14. Check for cached analysis result (using hash of content)
+    Redis-->>-Agent: 15. Return cached data or nil
     
-    %% Video Analysis Flow (Authenticated) %%
-    User->>+StreamlitUI: 23. Uploads Video File
-    StreamlitUI->>+FastAPI: 24. POST /analyze_video (multipart/form-data with Bearer Token)
+    alt Cache Miss
+        Agent->>+MongoDB: 16a. Perform RAG Vector Search on JD
+        MongoDB-->>-Agent: 17a. Return relevant knowledge documents
+        
+        Agent->>+Gemini: 18a. Perform Final Analysis (Resume + JD + RAG Context)
+        Gemini-->>-Agent: 19a. Structured JSON output (FitGraph, Insights, Questions)
+        
+        Agent->>+Redis: 20a. Cache the final analysis result
+    else Cache Hit
+        Note over Agent: 16b. Use cached analysis
+    end
+
+    Agent-->>-FastAPI: 21. Stream final analysis to API
+    FastAPI-->>-StreamlitUI: 22. Stream final response
+    StreamlitUI-->>-User: 23. Display FitGraph & Mock Interview Questions
     
-    FastAPI->>FastAPI: 25. Verify JWT and user role
-    FastAPI->>+Gemini: 26. Request video analysis
+    %% Mock Interview Evaluation Flow %%
+    User->>+StreamlitUI: 24. Practices interview, submits an answer
+    StreamlitUI->>+FastAPI: 25. POST /evaluate_answer (Question + Answer)
     
-    Gemini->>Gemini: 27. Extract frames from video (OpenCV)
-    Gemini->>+Gemini: 28. Call Vision API to extract text from frames
-    Gemini-->>-Gemini: 29. Receive structured text (resume & JD)
+    FastAPI->>+Gemini: 26. Evaluate answer based on question and JD context
+    Gemini-->>-FastAPI: 27. Return evaluation feedback
     
-    Note over Gemini: 30. Re-uses the standard text analysis logic
+    FastAPI->>+MongoDB: 28. Save evaluation result to user's history
+    MongoDB-->>-FastAPI: 29. Confirm save
     
-    Gemini-->>-FastAPI: 31. Return final analysis payload
-    FastAPI-->>-StreamlitUI: 32. Return JSON response
-    StreamlitUI-->>-User: 33. Display results on Analysis Page
+    FastAPI-->>-StreamlitUI: 30. Return evaluation feedback
+    StreamlitUI-->>-User: 31. Display feedback for the answer
 ```
