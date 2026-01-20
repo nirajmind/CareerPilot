@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: api
-        image: your-docker-repo/careerpilot-api:latest # IMPORTANT: Replace with your actual image path
+        image: careerpilot-api:latest # IMPORTANT: Replace with your actual image path
         imagePullPolicy: IfNotPresent
         resources:
           requests:
