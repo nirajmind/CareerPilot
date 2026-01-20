@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: ui
-        image: your-docker-repo/careerpilot-ui:latest # IMPORTANT: Replace with your actual image path
+        image: careerpilot-ui:latest # IMPORTANT: Replace with your actual image path
         imagePullPolicy: IfNotPresent
         resources:
           requests:
