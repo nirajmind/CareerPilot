@@ -5,6 +5,8 @@ import imagehash
 from PIL import Image
 import easyocr
 
+from app.gemini.exceptions import GeminiSafetyError
+
 from .logger import logger
 
 
@@ -59,6 +61,7 @@ def prepare_frames(frames):
 
 
 def ocr_fallback(prepared_frames):
+    logger.info(f"Starting OCR fallback processing with EasyOCR and for frames {prepared_frames}.")
     reader = easyocr.Reader(["en"])
     resume, jd = [], []
 
@@ -80,9 +83,9 @@ def ocr_fallback(prepared_frames):
 
 def validate_extraction(data):
     if not data:
-        return None
-    if not data.get("resume_text"):
-        return None
-    if not data.get("jd_text"):
-        return None
+        raise GeminiSafetyError("Empty or blocked extraction")
+    if "resume_text" not in data or "jd_text" not in data: 
+        raise GeminiSafetyError("Missing expected fields in extraction") 
+    if data.get("blocked", False):
+        raise GeminiSafetyError("Gemini Vision safety block detected")
     return data

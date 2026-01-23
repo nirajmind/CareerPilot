@@ -1,0 +1,12 @@
+ML Engineer (3.5 years)
+Candidate Name: [Redacted]
+Experience:
+- ML Engineer, DataForge (3.5 years)
+Skills:
+- Python, TensorFlow, PyTorch
+- Feature engineering
+- Model deployment
+- Vector databases
+Projects:
+- Recommendation engine
+- Fraud detection model

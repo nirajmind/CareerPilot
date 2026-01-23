@@ -1,38 +1,62 @@
 import json
 import hashlib
-from .json_utils import safe_json_parse
 from .logger import logger
+from .json_utils import safe_json_parse
 
 
 async def embed(client, text: str):
-    if not text.strip():
+    if not text or not text.strip():
+        logger.warning("embed() called with empty text")
         return []
 
     key = _cache_key(client.embedding_model, text)
 
+    # Try Redis cache
     if client.redis:
-        cached = await client.redis.get(key)
-        if cached:
-            return json.loads(cached)
+        try:
+            cached = await client.redis.get(key)
+            if cached:
+                embedding = safe_json_parse(cached)
+                if embedding:
+                    logger.info("Embedding cache hit", extra={"key": key})
+                    return embedding
+        except Exception as e:
+            logger.exception(f"Redis read failed for key={key}: {e}")
 
-    prompt = f"Embed this text:\n{text}"
+    logger.info("Calling Gemini for embedding", extra={"key": key})
+    logger.debug(f"Embedding input text: {text}")
 
-    resp = await client.call(
-        "embed",
-        client.client.embed_content,
-        model=client.embedding_model,
-        content=prompt,
-        task_type="retrieval_document",
-    )
+    try:
+        # ✔ Correct API for your installed google.genai SDK
+        resp = await client.call(
+            "embed",
+            client.client.models.embed_content,
+            model=client.embedding_model,
+            contents=[
+                {
+                    "role": "user",
+                    "parts": [{"text": text}],
+                }
+            ],
+        )
 
-    embedding = resp.embedding
+        # ✔ Correct extraction for EmbedContentResponse
+        embedding = resp.embeddings[0].values
 
+    except Exception as e:
+        logger.exception(f"Gemini embedding call failed: {e}")
+        return []
+
+    # Cache embedding
     if client.redis:
-        await client.redis.set(key, json.dumps(embedding))
+        try:
+            await client.redis.set(key, json.dumps(embedding))
+        except Exception as e:
+            logger.exception(f"Redis write failed for key={key}: {e}")
 
     return embedding
 
 
-def _cache_key(model, text):
-    h = hashlib.sha256(text.encode()).hexdigest()
+def _cache_key(model: str, text: str) -> str:
+    h = hashlib.sha256(text.encode("utf-8")).hexdigest()
     return f"emb:{model}:{h}"

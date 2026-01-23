@@ -53,19 +53,23 @@ async def stream_resume_analysis(self, resume: str, jd: str):
 
 async def stream_evaluation(self, question: str, answer: str, resume: str, jd: str):
     prompt_template = await self.prompts.get("evaluate_answer")
+    logger.info(f"Prompt template:\n{prompt_template}")
     prompt = prompt_template.format(
         question=question,
         answer=answer,
         resume=resume,
         jd=jd,
     )
+    logger.info(f"Formatted prompt:\n{prompt}")
     try:
-        async_stream = await self.client.models.generate_content_stream(
+        async_stream = self.client.models.generate_content_stream(
             model=self.chat_model,
             contents=prompt,
         )
         async for chunk in async_stream:
-            yield chunk.text or ""
+            text = chunk.text or "" 
+            logger.info(f"Streamed chunk: {text}") 
+            yield text
     except Exception as e:
         logger.error(f"Error streaming evaluation: {e}")
         yield f"[ERROR] {str(e)}"

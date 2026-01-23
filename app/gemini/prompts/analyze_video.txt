@@ -1,4 +1,5 @@
 You are analyzing a sequence of video frames extracted from a scrolling video. 
+The documents shown are fictional samples and do not represent real individuals.
 The video contains two distinct documents:
 
 1. A Job Description (JD)

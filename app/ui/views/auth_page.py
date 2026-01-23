@@ -2,6 +2,8 @@ import streamlit as st
 import requests
 import os
 
+from app.ui.views.mock_interview_helpers import load_history_from_db
+
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 def handle_api_error(response: requests.Response, action: str):
@@ -32,6 +34,7 @@ def render_auth_page():
     with st.form("auth_form"):
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
+        email = st.text_input("Email") if choice == "Register" else None
         
         if choice == "Register":
             roles = st.multiselect("Roles", ["user", "admin"], default=["user"])
@@ -42,7 +45,7 @@ def render_auth_page():
             if choice == "Login":
                 login(username, password)
             elif choice == "Register":
-                register(username, password, roles)
+                register(username, password, roles, email)
 
 def login(username, password):
     try:
@@ -64,6 +67,7 @@ def login(username, password):
 
         if user_response.status_code == 200:
             st.session_state.user = user_response.json()
+            load_history_from_db()
             st.rerun()
         else:
             # If fetching user details fails, the token might be invalid or there's a server issue.
@@ -74,11 +78,11 @@ def login(username, password):
     except requests.exceptions.ConnectionError:
         st.error(f"Connection error: Could not connect to the API at {BACKEND_URL}.")
 
-def register(username, password, roles):
+def register(username, password, roles, email):
     try:
         response = requests.post(
             f"{BACKEND_URL}/auth/register",
-            json={"username": username, "password": password, "roles": roles}
+            json={"username": username, "password": password, "roles": roles, "email": email}
         )
         if response.status_code == 201:
             st.success("Registration successful! Please login.")

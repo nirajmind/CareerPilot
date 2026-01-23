@@ -1,8 +1,9 @@
+from datetime import datetime
 from fastapi import FastAPI, HTTPException, Request, Depends, status, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
-from fastapi.responses import StreamingResponse
-
+from fastapi.responses import JSONResponse, StreamingResponse
+from app.utils.time_tracker import TimeTracker
 import json
 import time
 import uuid
@@ -10,6 +11,7 @@ import tempfile
 import os
 
 from redis import asyncio as aioredis
+from requests import request
 
 from app.utils.logger import setup_logger
 from app.utils.mongo_handler import mongo_handler
@@ -22,17 +24,21 @@ from .schemas import (
     AnalysisRequest, AnalysisResponse, EvaluateAnswerRequest,
     EvaluateAnswerResponse, IngestRequest, UserCreate, Token, User
 )
+from app.api.mock_interview import router as mock_router
+from app.api.analysis_history import router as analysis_history_router
 
 # --- Gemini Modular Imports ---
 from app.gemini import (
     GeminiClient,
-    analyze_resume_and_jd,
-    analyze_video_and_jd,
     evaluate_answer,
     stream_resume_analysis,
     stream_evaluation,
-    embed
+    embed,
+    extract_text_from_video
 )
+
+# --- Agent Imports ---
+from app.agent.workflow import CareerPilotAgent
 
 from .config import API_TITLE, API_VERSION
 
@@ -47,10 +53,19 @@ redis_client = aioredis.Redis(
 
 # --- Gemini Client ---
 gemini_client = GeminiClient(redis_client=redis_client)
+tracker = TimeTracker()
+# --- LangGraph Agent ---
+agent = CareerPilotAgent(gemini_client=gemini_client, redis_client=redis_client)
 
 # --- FastAPI App ---
 app = FastAPI(title=API_TITLE, version=API_VERSION)
+app.include_router(mock_router)
+app.include_router(analysis_history_router)
 
+@app.exception_handler(Exception) 
+async def global_exception_handler(request: Request, exc: Exception): 
+    logger.exception("Unhandled exception occurred") 
+    return JSONResponse( status_code=500, content={"error": str(exc)} )
 
 # ---------------------------------------------------------
 # Startup / Shutdown
@@ -118,10 +133,13 @@ async def register_user(user: UserCreate):
 
     hashed_password = get_password_hash(user.password)
     await mongo_handler.create_user({
-        "username": user.username,
-        "hashed_password": hashed_password,
-        "roles": user.roles,
-        "is_active": True,
+        "email": user.email, 
+        "username": user.username, 
+        "password_hash": hashed_password,
+        "roles": user.roles, 
+        "is_active": True, 
+        "created_at": datetime.now(), 
+        "updated_at": datetime.now(),
     })
 
     return {"message": "User created successfully"}
@@ -131,7 +149,7 @@ async def register_user(user: UserCreate):
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     user = await mongo_handler.get_user(form_data.username)
 
-    if not user or not verify_password(form_data.password, user["hashed_password"]):
+    if not user or not verify_password(form_data.password, user["password_hash"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -145,7 +163,8 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         )
 
     token = create_access_token(
-        data={"sub": user["username"], "roles": user["roles"]}
+        data={"sub": user["username"], "roles": user["roles"], 
+              "email": user["email"]}
     )
 
     return {"access_token": token, "token_type": "bearer"}
@@ -169,29 +188,25 @@ def health_check():
 # ---------------------------------------------------------
 @app.post("/analyze", response_model=AnalysisResponse)
 async def analyze(request: AnalysisRequest, current_user: dict = Depends(get_current_user)):
-    logger.info(f"Received analysis request from user '{current_user['username']}'")
-
-    cache_key = f"analysis:{hash(request.resume_text + request.jd_text)}"
-    cached = await redis_client.get(cache_key)
-
-    if cached:
-        logger.info("Cache hit for analysis request.")
-        return json.loads(cached)
-
-    logger.info("Cache miss for analysis request.")
-
+    logger.info(f"Received text analysis request from user '{current_user['username']}'")
+    tracker.mark("text_api_request_received")
+    inputs = {
+        "resume_text": request.resume_text,
+        "jd_text": request.jd_text,
+    }
+    tracker.mark("text_inputs_prepared")
     try:
-        result = await analyze_resume_and_jd(
-            gemini_client,
-            request.resume_text,
-            request.jd_text
-        )
 
-        await redis_client.set(cache_key, json.dumps(result), ex=3600)
-        return result
-
+        final_state = await agent.workflow.ainvoke(inputs)
+        logger.info("Graph workflow completed for text.")
+        result = final_state.get("final_result")
+        if not result:
+            raise HTTPException(status_code=500, detail="Agent workflow failed to produce a result.")
+        
+        logger.info("Performance Metrics: %s", result["performance_metrics"])
+        return AnalysisResponse(**final_state.get("final_result", {}))
     except Exception as e:
-        logger.error(f"Analysis failed: {e}")
+        logger.error(f"Analysis failed during agent execution: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -203,27 +218,39 @@ async def analyze_video(
     current_user: dict = Depends(get_current_user),
     video_file: UploadFile = File(...)
 ):
+    tracker.mark("video_api_request_received")
     if not video_file.content_type.startswith("video/"):
         raise HTTPException(status_code=400, detail="Invalid file type. Please upload a video.")
 
+    # Create temp file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
+        tmp.write(await video_file.read())
+        video_path = tmp.name
+    tracker.mark("video_file_saved_to_temp")
+    logger.info(f"Video saved to temporary file: {video_path}")
+
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
-            tmp.write(await video_file.read())
-            video_path = tmp.name
+        # Prepare workflow input
+        inputs = {"video_file_path": video_path}
 
-        logger.info(f"Video saved to temporary file: {video_path}")
+        # Run the workflow (langgraph 0.2.3)
+        final_state = await agent.workflow.ainvoke(inputs)
+        logger.info("Graph workflow completed for video.")
+        # Validate workflow output
+        if not isinstance(final_state, dict):
+            raise HTTPException(500, "Workflow returned invalid state")
 
-        result = await analyze_video_and_jd(gemini_client, video_path)
-        return result
+        result = final_state.get("final_result")
+        if not isinstance(result, dict):
+            raise HTTPException(500, "Workflow failed to produce final_result")
 
-    except Exception as e:
-        logger.error(f"Video analysis failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Video analysis error: {e}")
+        # Return the final result (FastAPI will validate against AnalysisResponse)
+        return AnalysisResponse(**final_state.get("final_result", {}))
 
     finally:
-        if 'video_path' in locals() and os.path.exists(video_path):
+        # Cleanup temp file
+        if os.path.exists(video_path):
             os.remove(video_path)
-
 
 # ---------------------------------------------------------
 # Evaluate Answer
@@ -232,7 +259,8 @@ async def analyze_video(
 async def evaluate_answer_api(
     payload: EvaluateAnswerRequest,
     current_user: dict = Depends(get_current_user)
-):
+):  
+    tracker.mark("evaluate_answer_request_received")
     return await evaluate_answer(
         gemini_client,
         payload.question,

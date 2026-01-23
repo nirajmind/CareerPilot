@@ -1,0 +1,13 @@
+Resume #6 - Backend Engineer (4 years)
+Candidate Name: [Redacted] 
+Experience:
+- Backend Engineer, CloudSphere (4 years)
+Skills:
+- Python, Django, FastAPI
+- Redis, Celery
+- PostgreSQL
+- Docker, Kubernetes
+- CI/CD
+Projects:
+- Designed microservices for payment system
+- Implemented caching + async workers

@@ -36,6 +36,7 @@ dependencies = [
     "python-jose[cryptography]",
     "python-multipart",
     "opencv-python",
+    "langgraph",
 ]
 
 [project.urls]

@@ -1,5 +1,6 @@
+from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, Field
 from typing import List
 
 
@@ -82,12 +83,23 @@ class IngestRequest(BaseModel):
 
 # --- Auth Schemas ---
 
-class UserBase(BaseModel):
-    username: str
-    is_active: Optional[bool] = True
+class UserBase(BaseModel): 
+    id: Optional[str] = Field(default=None, alias="_id") 
+    email: EmailStr 
+    username: str 
+    is_active: bool = True 
+    roles: List[str] = ["user"] 
+    created_at: datetime = Field(default_factory=datetime.now) 
+    updated_at: datetime = Field(default_factory=datetime.now) 
 
-class UserCreate(UserBase):
-    password: str
+class Config: 
+        populate_by_name = True 
+        json_encoders = {datetime: lambda v: v.isoformat()} 
+        
+class UserCreate(BaseModel): 
+    email: EmailStr 
+    username: str 
+    password: str 
     roles: List[str] = ["user"]
 
 class UserInDB(UserBase):
@@ -104,3 +116,33 @@ class TokenData(BaseModel):
 
 class User(UserBase):
     roles: List[str] = []
+
+class AnalysisResult(BaseModel):
+    user_id: Optional[str] = None
+    resume_text: str
+    jd_text: str
+
+    # Core analysis sections
+    summary: Optional[str] = ""
+    strengths: Optional[List[str]] = []
+    weaknesses: Optional[List[str]] = []
+
+    # FitGraph
+    fitgraph: Optional[dict] = {}
+
+    # Detailed sections
+    resume_analysis: Optional[dict] = {}
+    jd_analysis: Optional[dict] = {}
+    resume_fit: Optional[dict] = {}
+    skill_matrix: Optional[dict] = {}
+    preparation_plan: Optional[dict] = {}
+    resume_rewrite: Optional[str] = ""
+    next_steps: Optional[List[str]] = []
+
+    # Mock interview
+    mock_interview: Optional[dict] = {}
+
+    # Metadata
+    source: Optional[str] = "text"  # "text" or "video"
+    timestamp: datetime = Field(default_factory=datetime.now)
+
