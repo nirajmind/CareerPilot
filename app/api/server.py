@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException, Request, Depends, status, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.responses import JSONResponse, StreamingResponse
-
+from app.utils.time_tracker import TimeTracker
 import json
 import time
 import uuid
@@ -53,7 +53,7 @@ redis_client = aioredis.Redis(
 
 # --- Gemini Client ---
 gemini_client = GeminiClient(redis_client=redis_client)
-
+tracker = TimeTracker()
 # --- LangGraph Agent ---
 agent = CareerPilotAgent(gemini_client=gemini_client, redis_client=redis_client)
 
@@ -189,12 +189,12 @@ def health_check():
 @app.post("/analyze", response_model=AnalysisResponse)
 async def analyze(request: AnalysisRequest, current_user: dict = Depends(get_current_user)):
     logger.info(f"Received text analysis request from user '{current_user['username']}'")
-    
+    tracker.mark("text_api_request_received")
     inputs = {
         "resume_text": request.resume_text,
         "jd_text": request.jd_text,
     }
-    
+    tracker.mark("text_inputs_prepared")
     try:
 
         final_state = await agent.workflow.ainvoke(inputs)
@@ -203,8 +203,8 @@ async def analyze(request: AnalysisRequest, current_user: dict = Depends(get_cur
         if not result:
             raise HTTPException(status_code=500, detail="Agent workflow failed to produce a result.")
         
-        logger.info(f"Analysis completed successfully with response as - '{result}'")
-        return result
+        logger.info("Performance Metrics: %s", result["performance_metrics"])
+        return AnalysisResponse(**final_state.get("final_result", {}))
     except Exception as e:
         logger.error(f"Analysis failed during agent execution: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -218,6 +218,7 @@ async def analyze_video(
     current_user: dict = Depends(get_current_user),
     video_file: UploadFile = File(...)
 ):
+    tracker.mark("video_api_request_received")
     if not video_file.content_type.startswith("video/"):
         raise HTTPException(status_code=400, detail="Invalid file type. Please upload a video.")
 
@@ -225,7 +226,7 @@ async def analyze_video(
     with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
         tmp.write(await video_file.read())
         video_path = tmp.name
-
+    tracker.mark("video_file_saved_to_temp")
     logger.info(f"Video saved to temporary file: {video_path}")
 
     try:
@@ -244,7 +245,7 @@ async def analyze_video(
             raise HTTPException(500, "Workflow failed to produce final_result")
 
         # Return the final result (FastAPI will validate against AnalysisResponse)
-        return result
+        return AnalysisResponse(**final_state.get("final_result", {}))
 
     finally:
         # Cleanup temp file
@@ -258,7 +259,8 @@ async def analyze_video(
 async def evaluate_answer_api(
     payload: EvaluateAnswerRequest,
     current_user: dict = Depends(get_current_user)
-):
+):  
+    tracker.mark("evaluate_answer_request_received")
     return await evaluate_answer(
         gemini_client,
         payload.question,
