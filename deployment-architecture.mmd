@@ -1,0 +1,35 @@
+flowchart TD
+
+    subgraph Internet["🌍 Internet"]
+    end
+
+    subgraph Caddy["🟦 Caddy Reverse Proxy<br/>HTTPS Termination"]
+        C80["Port 80 (HTTP)"]
+        C443["Port 443 (HTTPS)"]
+    end
+
+    subgraph K3s["🟩 k3s Cluster (containerd)"]
+        subgraph CareerPilot["careerpilot Deployment"]
+            CPService["NodePort 30001"]
+            CPPod["Pod: careerpilot"]
+        end
+
+        subgraph SmartTreasurer["smarttreasurer Deployment"]
+            STService["NodePort 8000 / 5173"]
+            STPod["Pod: smarttreasurer"]
+        end
+    end
+
+    subgraph FreeDNS["🟪 FreeDNS (afraid.org)"]
+        DNS1["careerpilot.chickenkiller.com → Public IP"]
+        DNS2["smarttreasurer.chickenkiller.com → Public IP"]
+    end
+
+    Internet --> FreeDNS
+    FreeDNS --> Caddy
+
+    Caddy -->|Reverse Proxy| CPService
+    Caddy -->|Reverse Proxy| STService
+
+    CPService --> CPPod
+    STService --> STPod

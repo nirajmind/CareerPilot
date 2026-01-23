@@ -1,12 +1,12 @@
 from langgraph.graph import StateGraph, END
-from typing import TypedDict, Annotated, List, Optional
-import operator
+from typing import TypedDict, List, Dict
 import json
 
 from app.gemini import GeminiClient, extract_text_from_video, embed
 from app.gemini.json_utils import safe_json_parse
 from app.rag import search, upsert
 from app.utils.logger import setup_logger
+from app.utils.time_tracker import TimeTracker # Using your existing TimeTracker class
 
 logger = setup_logger()
 
@@ -14,8 +14,7 @@ logger = setup_logger()
 
 class AgentState(TypedDict):
     """
-    Defines the state of the agent's workflow.
-    Handles both text and video inputs.
+    Defines the state of the agent's workflow, including the time tracker.
     """
     resume_text: str
     jd_text: str
@@ -24,6 +23,7 @@ class AgentState(TypedDict):
     final_result: dict
     vector_search_results: List[dict]
     generated_knowledge: str
+    tracker: TimeTracker # Add the tracker instance to the state
 
 # --- Graph Nodes ---
 
@@ -44,18 +44,15 @@ class CareerPilotAgent:
         workflow.add_node("generate_knowledge", self.generate_knowledge)
         workflow.add_node("ingest_knowledge", self.ingest_knowledge)
         workflow.add_node("perform_final_analysis", self.perform_final_analysis)
+        workflow.add_node("finalize_output", self.finalize_output)
 
         # Build the graph
         workflow.set_entry_point("route_input")
 
         # 1. Route based on input type (video or text)
         workflow.add_conditional_edges(
-            "route_input",
-            self.decide_input_path,
-            {
-                "video": "process_video",
-                "text": "check_cache" # For text input, skip video processing
-            }
+            "route_input", self.decide_input_path,
+            {"video": "process_video", "text": "check_cache"}
         )
         
         # 2. If video, process it, then check cache
@@ -67,49 +64,45 @@ class CareerPilotAgent:
             self.decide_after_cache,
             {
                 "continue": "search_vectors",
-                "exit": END,
+                "exit": END,  # Corrected: Exit directly on cache hit
             },
         )
 
         # 4. After searching vectors, decide if we need to generate new knowledge
         workflow.add_conditional_edges(
-            "search_vectors",
-            self.decide_to_generate_knowledge,
-            {
-                "generate": "generate_knowledge",
-                "augment": "perform_final_analysis",
-            },
+            "search_vectors", self.decide_to_generate_knowledge,
+            {"generate": "generate_knowledge", "augment": "perform_final_analysis"}
         )
         
-        # 5. If we generate knowledge, we must ingest it
+        # 5. If we generate knowledge, we must ingest it before final analysis
         workflow.add_edge("generate_knowledge", "ingest_knowledge")
-        
-        # 6. After ingesting, perform the final analysis
         workflow.add_edge("ingest_knowledge", "perform_final_analysis")
         
-        # 7. The final analysis is the last step before the end
-        workflow.add_edge("perform_final_analysis", END)
+        # 6. After the main analysis, finalize the output to add the performance report
+        workflow.add_edge("perform_final_analysis", "finalize_output")
+        
+        # 7. The finalization step is the true end of an uncached run
+        workflow.add_edge("finalize_output", END)
 
         return workflow.compile()
 
     # --- Node Implementations ---
 
     def route_input(self, state: AgentState):
-        """ The entry point to the graph, does nothing, just for routing. """
-        logger.info("Agent: Routing input.")
-        pass
+        """ The entry point, initializes the TimeTracker. """
+        logger.info("Agent: Routing input and starting timer.")
+        tracker = TimeTracker()
+        tracker.mark("agent_workflow_started")
+        return {"tracker": tracker}
 
     def decide_input_path(self, state: AgentState):
-        """ Determines the workflow path based on input type. """
-        if state.get("video_file_path"):
-            logger.info("Agent: Video input detected.")
-            return "video"
-        logger.info("Agent: Text input detected.")
+        if state.get("video_file_path"): return "video"
         return "text"
 
     async def process_video(self, state: AgentState):
         logger.info("Agent: Processing video to extract text.")
         extracted_text = await extract_text_from_video(self.gemini_client, state["video_file_path"])
+        state["tracker"].mark("video_processed")
         if not extracted_text.get("resume_text") or not extracted_text.get("jd_text"):
             raise ValueError("Could not extract resume or JD from video.")
         return {
@@ -121,55 +114,51 @@ class CareerPilotAgent:
         logger.info("Agent: Checking Redis cache for analysis.")
         key = f"analysis:{hash(state['resume_text'] + state['jd_text'])}"
         cached_result = await self.redis_client.get(key)
+        state["tracker"].mark("cache_checked")
         if cached_result:
             logger.info("Agent: Cache hit.")
+            # We don't need to add performance metrics to a cached result
             return {"final_result": json.loads(cached_result)}
         logger.info("Agent: Cache miss.")
         return {"analysis_cache_key": key}
 
     def decide_after_cache(self, state: AgentState):
-        """ Determines the next step after checking the cache. """
-        if state.get("final_result"):
-            return "exit" # Exit the graph if a cached result was found
+        if state.get("final_result"): return "exit"
         return "continue"
 
     async def search_vectors(self, state: AgentState):
         logger.info("Agent: Searching MongoDB for vector context.")
         query_embedding = await embed(self.gemini_client, state["jd_text"])
+        state["tracker"].mark("jd_embedded_for_search")
         results = await search(query_embedding, top_k=3)
+        state["tracker"].mark("vector_search_complete")
         return {"vector_search_results": results}
 
     def decide_to_generate_knowledge(self, state: AgentState):
-        logger.info("Agent: Deciding whether to generate new knowledge.")
-        if not state["vector_search_results"]:
-            logger.info("Agent: Vector store is empty. Proceeding to generate knowledge.")
-            return "generate"
-        logger.info("Agent: Found context in vector store. Proceeding to final analysis.")
+        if not state["vector_search_results"]: return "generate"
         return "augment"
 
     async def generate_knowledge(self, state: AgentState):
         logger.info("Agent: Generating foundational knowledge from JD.")
         prompt = await self.gemini_client.prompts.get("generate_knowledge")
         formatted_prompt = prompt.format(jd_text=state["jd_text"])
-        
         response = await self.gemini_client.call(
-            "generate_knowledge",
-            self.gemini_client.client.models.generate_content,
-            model=self.gemini_client.chat_model,
-            contents=formatted_prompt,
+            "generate_knowledge", self.gemini_client.client.models.generate_content,
+            model=self.gemini_client.chat_model, contents=formatted_prompt,
         )
+        state["tracker"].mark("knowledge_generated")
         return {"generated_knowledge": response.text}
 
     async def ingest_knowledge(self, state: AgentState):
         logger.info("Agent: Ingesting newly generated knowledge into vector store.")
         embedding = await embed(self.gemini_client, state["generated_knowledge"])
+        state["tracker"].mark("knowledge_embedded_for_ingestion")
         document = {
-            "text": state["generated_knowledge"],
-            "embedding": embedding,
+            "text": state["generated_knowledge"], "embedding": embedding,
             "source": "generated_from_jd"
         }
         await upsert(document)
-        # Add generated knowledge to search results for the current run
+        state["tracker"].mark("knowledge_ingested")
         current_results = state.get("vector_search_results", [])
         current_results.append({"text": state["generated_knowledge"]})
         return {"vector_search_results": current_results}
@@ -187,38 +176,27 @@ class CareerPilotAgent:
             return {"final_result": {"error": "No vector context"}}
 
         # Build context safely
-        context = "\n".join([res.get("text", "") for res in state["vector_search_results"]])
-
-        # Build prompt
+        context = "\n".join([res["text"] for res in state["vector_search_results"]])
         prompt = await self.gemini_client.prompts.get("final_analysis")
         formatted_prompt = prompt.format(
-            context=context,
-            resume_text=state["resume_text"],
-            jd_text=state["jd_text"],
+            context=context, resume_text=state["resume_text"], jd_text=state["jd_text"],
         )
-
-        # Call Gemini safely
         response = await self.gemini_client.call(
-            "final_analysis",
-            self.gemini_client.client.models.generate_content,
-            model=self.gemini_client.chat_model,
-            contents=formatted_prompt,
+            "final_analysis", self.gemini_client.client.models.generate_content,
+            model=self.gemini_client.chat_model, contents=formatted_prompt,
         )
-
-        if not response or not getattr(response, "text", None):
-            logger.error("Gemini returned empty response")
-            return {"final_result": {"error": "LLM returned empty response"}}
-
-        # Parse JSON safely
+        state["tracker"].mark("final_analysis_complete")
         final_result = safe_json_parse(response.text)
-        logger.info("Agent: Final analysis completed.")
-        # Cache only if key exists
-        cache_key = state.get("analysis_cache_key")
-        if cache_key:
-            logger.info(f"Agent: Caching final result in Redis with key: {cache_key}.")
+        if cache_key := state.get("analysis_cache_key"):
             await self.redis_client.set(cache_key, json.dumps(final_result), ex=3600)
-        else:
-            logger.warning("Missing analysis_cache_key; skipping cache write")
+            state["tracker"].mark("final_result_cached")
+        return {"final_result": final_result}
 
+    def finalize_output(self, state: AgentState):
+        """Attaches the performance metrics report to the final result."""
+        logger.info("Agent: Finalizing output and attaching performance metrics.")
+        final_result = state.get("final_result", {})
+        tracker = state["tracker"]
+        final_result["performance_metrics"] = tracker.report()
         return {"final_result": final_result}
 
