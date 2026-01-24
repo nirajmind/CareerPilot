@@ -1,14 +1,14 @@
-Candidate Name: [Redacted]
+Candidate Name: Aditi Sharma
 Education:
-B. Tech in Computer Science, 2024
+- B. Tech in Computer Science, 2024
 - CGPA: 8.2
 Skills:
 - Python, HTML, CSS, SQL
-- Basic Data Structures
+- Basic Data Structures & Algorithms
 - Git, Linux
 Projects:
 - Student Attendance Tracker (Python + SQLite)
 - Portfolio Website (HTML/CSS)
 Internships:
-None
-Career Goal: Entry-level software developer
+- None
+Career Goal: Entry-level software developer 

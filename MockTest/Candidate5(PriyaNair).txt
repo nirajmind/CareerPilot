@@ -1,13 +1,10 @@
-Data Analyst (2 years)
 Candidate Name: Priya Nair
 Experience:
 - Data Analyst, InsightWorks (2 years)
 Skills:
-SQL, Power BI, Python
+- SQL, Power BI, Python
 - Data cleaning, dashboards
 - Excel automation
 Projects:
 - Sales forecasting dashboard
 - Customer churn analysis
-
--

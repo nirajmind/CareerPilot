@@ -1,12 +1,10 @@
 Role: Data Analyst
 Skills Required:
-SQL
-Excel
+- SQL
+- Excel
 - Python (Pandas)
 - Dashboarding (Power BI/Tableau)
 Responsibilities:
 - Data cleaning
 - Reporting
 - KPI tracking
-
-JD #2 - Data Analyst (0-2 years)

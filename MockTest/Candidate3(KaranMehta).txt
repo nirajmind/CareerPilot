@@ -1,14 +1,11 @@
-Python Developer (1.5 years)
-Candidate Name: [Redacted]
+Candidate Name: Karan Mehta
 Experience:
 - Python Developer, TechNova Solutions (1.5 years)
 Skills:
 - Python, FastAPI, SQLAlchemy
-REST APIS
+- REST APIs
 - Unit Testing
 - Docker
 Projects:
 - Built internal automation scripts
 - Developed REST APIs for HR system
-
-TEST SET 2 - Early Career (1-2 years experience)
