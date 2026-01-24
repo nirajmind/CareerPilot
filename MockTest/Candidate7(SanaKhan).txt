@@ -1,18 +1,12 @@
-Education:
-- B.SC IT,
-Skills:
-
-- Linux, Docker basics
-
-- AWS EC2, S3
-Shell scripting
-Projects:
-Static Website Deployment on AWS
-Dockerized To-Do App
-
-Fresher Resume #3 - B.Sc IT Graduate (Cloud + DevOps Beginner)
 Name: Sana Khan
+Education:
+- B.SC IT (Cloud + DevOps Beginner) - 2024
 
-2024
+Skills:
+- Linux, Docker basics
+- AWS EC2, S3
+- Shell scripting
 
--
+Projects:
+- Static Website Deployment on AWS
+- Dockerized To-Do App
