@@ -1,17 +1,13 @@
-Candidate Name: [Redacted]
+Candidate Name: Rahul Verma
 Education:
-MCA, 2023
-CGPA: 8.7
+- MCA, 2023
+- CGPA: 8.7
 Skills:
 - Python, NumPy, Pandas
-Basic ML algorithms
+- Basic ML algorithms
 - Jupyter Notebook
 Projects:
 - House Price Prediction (Linear Regression)
 - Spam Classifier (Naive Bayes)
 Internships:
-2-month internship at a small analytics firm
-
-Fresher Resume #2 - MCA Graduate (AI/ML Beginner)
-
--
+- 2-month internship at a small analytics firm

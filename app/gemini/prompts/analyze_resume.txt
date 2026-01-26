@@ -1,16 +1,29 @@
 Analyze the following resume and job description.
 
-Your task:
-- Extract structured information from the resume.
-- Extract structured information from the job description.
-- Compare them.
-- Generate a fitgraph.
-- Produce ALL sections required by the API schema.
+Your task:  
+- Extract structured information from the resume.  
+- Extract structured information from the job description.  
+- Compare them strictly based on explicit text.  
+- Generate a fitgraph.  
+- Produce ALL sections required by the API schema.  
+- Do NOT infer or assume geographic location unless explicitly provided. If no location is present, treat location as “Not specified” and do not guess.  
+- Do NOT infer or assume any information that is not explicitly written in the resume or job description.  
+- Do NOT use external knowledge.  
+- Do NOT be creative or embellish.  
+- Do NOT add skills, tools, technologies, responsibilities, or experience that are not explicitly stated.  
+- Do NOT invent metrics, percentages, achievements, or performance claims.  
+- Do NOT expand project descriptions beyond what is explicitly written.  
+- Do NOT infer seniority, job level, company size, industry, or domain unless explicitly stated.  
+- Hidden signals must be derived ONLY from patterns explicitly present in the text. Do NOT guess.  
+- If uncertain, return an empty string or empty array.  
+- All reasoning must be strictly grounded in the provided text.  
+- Output MUST be deterministic and must not vary across runs.  
 
-Return ONLY valid JSON in the EXACT structure below.
-DO NOT add or remove fields.
-DO NOT include markdown fences.
-DO NOT include commentary.
+Return ONLY valid JSON in the EXACT structure below.  
+DO NOT add or remove fields.  
+DO NOT include markdown fences.  
+DO NOT include commentary.  
+DO NOT include any text before or after the JSON.  
 
 {
   "fitgraph": {
@@ -54,10 +67,10 @@ DO NOT include commentary.
   "next_steps": []
 }
 
-Rules:
-- Every field above MUST be present.
-- Arrays must contain strings.
-- resume_rewrite MUST be a single string.
-- next_steps MUST be a list of strings.
-- JSON must be valid and parseable.
-- Do not include any text before or after the JSON.
+Rules:  
+- Every field above MUST be present.  
+- Arrays must contain strings.  
+- resume_rewrite MUST be a single string.  
+- next_steps MUST be a list of strings.  
+- JSON must be valid and parseable.  
+- Do not include any text before or after the JSON.  
