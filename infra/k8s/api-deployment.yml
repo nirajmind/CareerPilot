@@ -69,6 +69,16 @@ spec:
             secretKeyRef:
               name: careerpilot-secrets
               key: LOG_LEVEL
+        - name: GEMINI_PROXY_URL
+          valueFrom:
+            secretKeyRef:
+              name: careerpilot-secrets
+              key: GEMINI_PROXY_URL
+        - name: PROXY_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: careerpilot-secrets
+              key: PROXY_SECRET      
 
 ---
 apiVersion: v1
