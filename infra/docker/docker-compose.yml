@@ -1,6 +1,7 @@
 services:
 
   api:
+    image: careerpilot-api:latest
     build:
       context: ../../
       dockerfile: Dockerfile.api.cpu
@@ -28,16 +29,17 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]  
-    runtime: nvidia          
+  #    deploy:
+  #      resources:
+  #        reservations:
+  #          devices:
+  #            - driver: nvidia
+  #              count: 1
+  #              capabilities: [ gpu ]
+  #    runtime: nvidia
 
   ui:
+    image: careerpilot-ui:latest
     build:
       context: ../../
       dockerfile: Dockerfile.ui
@@ -54,34 +56,34 @@ services:
       driver: "json-file"
       options:
         max-size: "10m"
-        max-file: "3"  
+        max-file: "3"
 
-#  agent:
-#      build:
-#        context: ../../
-#        dockerfile: Dockerfile.agent
-#      container_name: careerpilot-agent
-#      depends_on:
-#        - mongo
-#        - redis
-#      environment:
-#        MONGO_URI: mongodb://mongo:27017/careerpilot
-#        REDIS_HOST: redis
-#        REDIS_PORT: 6379
-#        GEMINI_API_KEY: ${GEMINI_API_KEY}
-#        JWT_SECRET_KEY: ${JWT_SECRET_KEY}
-#        GEMINI_MODEL: ${GEMINI_MODEL}
-#        LOG_LEVEL: ${LOG_LEVEL}
-#        GIT_PYTHON_REFRESH: quiet
-#        GEMINI_VISION_MODEL: ${GEMINI_VISION_MODEL}
-#      networks:
-#        - careerpilot-net
-#      logging:
-#        driver: json-file
-#        options:
-#          max-size: 10m
-#          max-file: 3  
-        
+  #  agent:
+  #      build:
+  #        context: ../../
+  #        dockerfile: Dockerfile.agent
+  #      container_name: careerpilot-agent
+  #      depends_on:
+  #        - mongo
+  #        - redis
+  #      environment:
+  #        MONGO_URI: mongodb://mongo:27017/careerpilot
+  #        REDIS_HOST: redis
+  #        REDIS_PORT: 6379
+  #        GEMINI_API_KEY: ${GEMINI_API_KEY}
+  #        JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+  #        GEMINI_MODEL: ${GEMINI_MODEL}
+  #        LOG_LEVEL: ${LOG_LEVEL}
+  #        GIT_PYTHON_REFRESH: quiet
+  #        GEMINI_VISION_MODEL: ${GEMINI_VISION_MODEL}
+  #      networks:
+  #        - careerpilot-net
+  #      logging:
+  #        driver: json-file
+  #        options:
+  #          max-size: 10m
+  #          max-file: 3  
+
 
   #mongo:
   #  image: mongo:6
@@ -104,7 +106,7 @@ services:
     image: redis:7
     container_name: redis
     restart: always
-    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    command: [ "redis-server", "/usr/local/etc/redis/redis.conf" ]
     volumes:
       - ../../data/redis:/data
       - ./redis.conf:/usr/local/etc/redis/redis.conf
@@ -116,7 +118,7 @@ services:
       driver: "json-file"
       options:
         max-size: "5m"
-        max-file: "3"  
+        max-file: "3"
 
 networks:
   careerpilot-net:
