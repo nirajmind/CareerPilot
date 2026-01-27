@@ -37,7 +37,7 @@ async def embed(client, text: str):
 
         resp = await client.call(
             "embedding",
-            f"{client.embedding_model}:embedContent",
+            f"models/{client.embedding_model}:embedContent",
             payload
         )
 
