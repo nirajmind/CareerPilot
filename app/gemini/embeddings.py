@@ -26,22 +26,22 @@ async def embed(client, text: str):
     logger.info("Calling Gemini for embedding", extra={"key": key})
     logger.debug(f"Embedding input text: {text}")
 
+    embedding = []
+
     try:
-        # ✔ Correct API for your installed google.genai SDK
+        payload = {
+            "content": {
+                "parts": [{"text": text}]
+            }
+        }
+
         resp = await client.call(
-            "embed",
-            client.client.models.embed_content,
-            model=client.embedding_model,
-            contents=[
-                {
-                    "role": "user",
-                    "parts": [{"text": text}],
-                }
-            ],
+            "embedding",
+            f"{client.embedding_model}:embedContent",
+            payload
         )
 
-        # ✔ Correct extraction for EmbedContentResponse
-        embedding = resp.embeddings[0].values
+        embedding = resp["embedding"]["values"]
 
     except Exception as e:
         logger.exception(f"Gemini embedding call failed: {e}")
