@@ -142,12 +142,25 @@ class CareerPilotAgent:
         logger.info("Agent: Generating foundational knowledge from JD.")
         prompt = await self.gemini_client.prompts.get("generate_knowledge")
         formatted_prompt = prompt.format(jd_text=state["jd_text"])
+        
+        payload = {
+            "contents": [{"parts": [{"text": formatted_prompt}]}]
+        }
+        
         response = await self.gemini_client.call(
-            "generate_knowledge", self.gemini_client.client.models.generate_content,
-            model=self.gemini_client.chat_model, contents=formatted_prompt,
+            "generate_knowledge", 
+            f"{self.gemini_client.chat_model}:generateContent",
+            payload
         )
         state["tracker"].mark("knowledge_generated")
-        return {"generated_knowledge": response.text}
+        
+        try:
+            text = response["candidates"][0]["content"]["parts"][0]["text"]
+        except (KeyError, IndexError):
+            logger.error(f"Generate knowledge response invalid: {response}")
+            raise ValueError("Invalid response from Gemini")
+            
+        return {"generated_knowledge": text}
 
     async def ingest_knowledge(self, state: AgentState):
         logger.info("Agent: Ingesting newly generated knowledge into vector store.")
@@ -181,12 +194,25 @@ class CareerPilotAgent:
         formatted_prompt = prompt.format(
             context=context, resume_text=state["resume_text"], jd_text=state["jd_text"],
         )
+        
+        payload = {
+            "contents": [{"parts": [{"text": formatted_prompt}]}]
+        }
+        
         response = await self.gemini_client.call(
-            "final_analysis", self.gemini_client.client.models.generate_content,
-            model=self.gemini_client.chat_model, contents=formatted_prompt,
+            "final_analysis", 
+            f"{self.gemini_client.chat_model}:generateContent",
+            payload
         )
         state["tracker"].mark("final_analysis_complete")
-        final_result = safe_json_parse(response.text)
+        
+        try:
+            text = response["candidates"][0]["content"]["parts"][0]["text"]
+        except (KeyError, IndexError):
+            logger.error(f"Final analysis response invalid: {response}")
+            raise ValueError("Invalid response from Gemini")
+            
+        final_result = safe_json_parse(text)
         if cache_key := state.get("analysis_cache_key"):
             await self.redis_client.set(cache_key, json.dumps(final_result), ex=3600)
             state["tracker"].mark("final_result_cached")

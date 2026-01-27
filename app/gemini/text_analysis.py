@@ -2,19 +2,30 @@ from .json_utils import safe_json_parse
 from .logger import logger
 
 
+
 async def analyze_resume_and_jd(client, resume: str, jd: str):
     prompt_template = await client.prompts.get("analyze_resume")
     prompt = prompt_template.replace("{resume}", resume).replace("{jd}", jd)
 
-    resp = await client.call(
-        "resume_analysis",
-        client.client.models.generate_content,
-        model=client.chat_model,
-        contents=prompt,
-    )
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}]
+    }
 
-    text = resp.candidates[0].content.parts[0].text
-    return safe_json_parse(text)
+    try:
+        resp = await client.call(
+            "resume_analysis",
+            f"{client.chat_model}:generateContent",
+            payload
+        )
+        # resp is dict
+        text = resp["candidates"][0]["content"]["parts"][0]["text"]
+        return safe_json_parse(text)
+    except Exception as e:
+        logger.error(f"Resume analysis failed: {e}")
+        # Return empty dict or re-raise? Original code didn't catch explicitly here but caller might.
+        # Original code just accessed props which would raise if failed.
+        # We should probably let it raise or handle safely.
+        raise e
 
 
 async def evaluate_answer(client, question, answer, resume, jd):
@@ -27,14 +38,18 @@ async def evaluate_answer(client, question, answer, resume, jd):
         jd=jd,
     )
 
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}]
+    }
+
     resp = await client.call(
         "evaluate_answer",
-        client.client.models.generate_content,
-        model=client.chat_model,
-        contents=prompt,
+        f"{client.chat_model}:generateContent",
+        payload
     )
 
-    return safe_json_parse(resp.text)
+    text = resp["candidates"][0]["content"]["parts"][0]["text"]
+    return safe_json_parse(text)
 
 async def stream_resume_analysis(self, resume: str, jd: str):
     prompt_template = await self.prompts.get("analyze_resume")

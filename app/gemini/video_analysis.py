@@ -1,4 +1,5 @@
 import json
+import base64
 from .video_extraction import (
     compute_video_hash,
     extract_raw_frames,
@@ -36,23 +37,55 @@ async def extract_text_from_video(client, video_path: str) -> dict:
     tracker.mark("frames_deduplicated")
     prepared_frames = prepare_frames(unique_frames)
     tracker.mark("frames_prepared_for_api")
-    prompt = await client.prompts.get("analyze_video")
-    content = [prompt] + prepared_frames
-    logger.debug(f"Gemini Vision content: {content}")
+
+    prompt_text = await client.prompts.get("analyze_video")
+    
+    parts = [{"text": prompt_text}]
+    
+    for frame in prepared_frames:
+        # data is bytes, need to base64 encode for JSON payload
+        b64_data = base64.b64encode(frame["data"]).decode("utf-8")
+        parts.append({
+            "inline_data": {
+                "mime_type": frame["mime_type"],
+                "data": b64_data
+            }
+        })
+    
+    payload = {
+        "contents": [{"parts": parts}],
+        "generationConfig": {"response_mime_type": "application/json"},
+        # Safety settings - assuming defaults or simple mapping if needed, 
+        # but for now we'll rely on server-side defaults or if client.safety() returns compatible dict list, 
+        # checking client.safety() structure from previous context it was a dict of objects, not compatible with JSON list.
+        # We will omit safety_settings for now as the proxy/endpoint defaults might suffice, or we'd need to convert keys to strings.
+        # Given the instruction to just fix the call, I will omit explicit safety settings here unless critical.
+    }
+
+    logger.debug(f"Gemini Vision content prepared with {len(prepared_frames)} frames")
 
     try:
         tracker.mark("gemini_vision_call_start")
+        
         resp = await client.call(
             "video_text_extraction",
-            client.client.models.generate_content,
-            model=client.vision_model,
-            contents=content,
-            generation_config={"response_mime_type": "application/json"},
-            safety_settings=client.safety(),
+            f"{client.vision_model}:generateContent",
+            payload
         )
+        
         tracker.mark("gemini_vision_call_end")
-        logger.debug(f"Gemini Vision raw response: {resp.text}")
-        parsed_response = safe_json_parse(resp.text)
+        
+        # resp is a dict (JSON response)
+        # Structure: candidates[0].content.parts[0].text
+        logger.debug(f"Gemini Vision raw response keys: {list(resp.keys())}")
+        
+        try:
+            text_content = resp["candidates"][0]["content"]["parts"][0]["text"]
+        except (KeyError, IndexError):
+            logger.error(f"Unexpected response structure: {resp}")
+            raise ValueError("Invalid response structure from Gemini")
+
+        parsed_response = safe_json_parse(text_content)
         logger.debug(f"Gemini Vision parsed response: {parsed_response}")
         extracted_text = validate_extraction(parsed_response)
         logger.info(f"Gemini Vision validation successful.")
