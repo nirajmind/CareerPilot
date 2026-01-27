@@ -55,6 +55,7 @@ class GeminiClient:
         logger.debug(f"[Gemini:{operation}] Payload keys: {list(payload.keys())}")
 
         url = f"{self.proxy_base}/{model}"
+        logger.info(f"[Gemini] Final URL = {url}")
 
         headers = {
             "Content-Type": "application/json",
