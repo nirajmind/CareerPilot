@@ -26,7 +26,7 @@ class GeminiClient:
         # Model names
         self.chat_model = os.getenv("GEMINI_MODEL", "models/gemini-pro")
         self.vision_model = os.getenv("GEMINI_VISION_MODEL", "models/gemini-pro-vision")
-        self.embedding_model = os.getenv("GEMINI_EMBEDDING_MODEL", "models/text-embedding-004")
+        self.embedding_model = os.getenv("GEMINI_EMBEDDING_MODEL", "v1/models/text-embedding-004")
 
         # HTTP client
         self.http = httpx.AsyncClient(timeout=60)
