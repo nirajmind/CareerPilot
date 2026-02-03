@@ -2,6 +2,7 @@ import os
 import uuid
 import time
 import httpx
+import json
 
 from app.gemini.prompt_loader import PromptLoader
 from .retry import retry_async
@@ -86,8 +87,63 @@ class GeminiClient:
 
             raise
 
-    # -----------------------------
-    # High-level API wrappers
+    async def call_stream(self, operation, model, payload):
+        """
+        Streaming version of call method.
+        Yields decoded JSON chunks from the Gemini stream.
+        """
+        cid = self.new_correlation_id()
+        logger.info(f"[Gemini] Start Stream {operation} cid={cid}")
+        
+        # Ensure we hit the streaming endpoint if not specified
+        if "generateContent" in model and "stream" not in model:
+             model = model.replace("generateContent", "streamGenerateContent")
+        
+        url = f"{self.proxy_base}/{model}"
+        logger.info(f"[Gemini] Stream URL = {url}")
+        
+        headers = {
+            "Content-Type": "application/json",
+            "x-careerpilot": self.proxy_secret
+        }
+
+        async with self.http.stream("POST", url, json=payload, headers=headers, timeout=60) as response:
+            if response.status_code != 200:
+                error_body = await response.read()
+                logger.error(f"[Gemini:Stream] Failed status={response.status_code} body={error_body}")
+                raise Exception(f"Gemini streaming failed: {response.status_code}")
+                
+            decoder = json.JSONDecoder()
+            buffer = ""
+            async for chunk in response.aiter_text():
+                buffer += chunk
+                while buffer:
+                    # Skip common array delimiters to parse individual JSON objects
+                    s_buffer = buffer.lstrip().lstrip(',').lstrip('[').lstrip()
+                    if not s_buffer:
+                        # If we stripped everything but still have data in original buffer (like a trailing comma/bracket at very end of stream), 
+                        # we might need to be careful. But usually lstrip handles it.
+                        # If s_buffer is empty, we break to get more data or finish.
+                        # Note: We must NOT discard 'buffer' if s_buffer is empty due to lack of data (incomplete token).
+                        # But lstrip() only removes whitespace/chars. It doesn't fail on partials.
+                        # However, if buffer is just "]", s_buffer becomes empty.
+                        if "]" in buffer and not s_buffer: 
+                            # End of array
+                            buffer = ""
+                        break
+                    
+                    try:
+                        obj, idx = decoder.raw_decode(s_buffer)
+                        yield obj
+                        # Move buffer forward
+                        # We need to calculate how much we stripped + idx
+                        # This is tricky with lstrip.
+                        # Safer approach:
+                        stripped_count = len(buffer) - len(s_buffer)
+                        buffer = buffer[stripped_count + idx:]
+                    except json.JSONDecodeError:
+                        # Incomplete JSON, wait for more chunks
+                        break
     # -----------------------------
 
     async def generate_text(self, text):

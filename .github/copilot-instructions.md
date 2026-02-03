@@ -1,90 +1,87 @@
 # CareerPilot - Copilot Instructions
 
-This document provides guidance for AI coding agents to effectively contribute to the CareerPilot codebase.
+CareerPilot is a cloud-native job application analysis system that combines agentic AI (LangGraph), multimodal processing (Gemini), RAG (MongoDB Vector Search), and containerized microservices.
 
-## Project Overview
+## Architecture Overview
 
-CareerPilot is a cloud-native, agentic AI system powered by Gemini, LangGraph, Redis, MongoDB Vector Search, and Streamlit. It analyzes resumes, job descriptions, and video scrolls to provide a FitGraph skill-match visualization and generate tailored insights for job seekers.
+**Data Flow:** Resume + Job Description → FastAPI API → LangGraph Agent → Gemini (multimodal reasoning) → FitGraph visualization + insights
 
-The application is architected as a set of containerized microservices:
-- **UI (`app/ui`)**: A Streamlit application that serves as the user interface.
-- **API (`app/api`)**: A FastAPI backend that exposes endpoints for analysis, evaluation, and RAG search.
-- **Agent (`app/agent`)**: A LangGraph-based agent for planning, RAG retrieval, and FitGraph logic. (Note: `workflow.py` is currently empty, so the agent's implementation is not yet defined).
-- **RAG (`app/rag`)**: A Retrieval-Augmented Generation pipeline using MongoDB Atlas Vector Search for grounding resume rewriting.
+**Services:**
+- **API** (`app/api/server.py`): FastAPI backend on port 8585; coordinates requests, handles auth (JWT + RBAC), proxies Gemini calls
+- **Agent** (`app/agent/workflow.py`): LangGraph state machine orchestrating analysis, RAG searches, and result caching via Redis
+- **UI** (`app/ui`): Streamlit frontend consuming the API
+- **RAG** (`app/rag/mongo_vector.py`): MongoDB Atlas Vector Search for contextual embeddings and document retrieval
+- **Gemini Bridge** (`app/gemini/`): HTTP client talking to Cloud Run proxy (required architecture—no direct SDK calls)
 
-## Key Technologies
+**Data Layer:** MongoDB (`collections: users, analysis_results, vectors`) + Redis (agent state, caching)
 
-- **Python 3.10+**: The core programming language.
-- **Streamlit**: For the UI.
-- **FastAPI**: For the backend API.
-- **LangGraph**: For the agent workflow and state machine.
-- **Gemini API**: For multimodal reasoning.
-- **MongoDB Atlas Vector Search**: For the RAG pipeline.
-- **Redis**: For agent state persistence, caching, and task queuing.
-- **Docker & Docker Compose**: For containerization and local development.
-- **Kubernetes**: For production deployment.
+## Critical Workflows & Commands
 
-## Getting Started
+**Local Development:**
+```bash
+# Setup: Activate venv, install deps, set .env with GEMINI_API_KEY, JWT_SECRET_KEY
+python -m venv .venv
+.venv\Scripts\Activate.ps1  # Windows PowerShell
+pip install -r requirements.txt
 
-The project can be run locally using Docker Compose. The `infra/docker/docker-compose.yml` file defines the services and their configurations.
+# Run services (requires MongoDB + Redis running locally or via Docker)
+# Terminal 1: FastAPI
+uvicorn app.api.server:app --reload --port 8000
 
-To run the application locally:
-1. Ensure you have Docker and Docker Compose installed.
-2. Create a `.env` file in the root of the project with your `GEMINI_API_KEY`.
-3. Run `docker-compose up --build` from the `infra/docker` directory.
+# Terminal 2: Streamlit
+streamlit run app/ui/main.py
 
-This will start the following services:
-- `ui`: Streamlit UI on port `8501`.
-- `api`: FastAPI backend on port `8000`.
-- `agent`: The agent worker (currently does nothing).
-- `mongo`: MongoDB database on port `27017`.
-- `redis`: Redis server on port `6379`.
+# Or: Docker Compose from infra/docker/ (all services at once)
+docker-compose up --build
+```
 
-## Development Guidelines
+**Testing:** `pytest` with fakeredis fixtures (see `tests/conftest.py`). No integration tests yet—RAG/Gemini are mocked.
 
-### API (`app/api/server.py`)
+**Deployment:** Kubernetes manifests in `infra/k8s/` with StatefulSet for Mongo, Deployments for stateless services. Caddy reverse proxy handles HTTPS.
 
-- The API is built with FastAPI.
-- Endpoints are defined for:
-  - `/health`: Health check.
-  - `/analyze`: Analyzes a resume and job description.
-  - `/evaluate_answer`: Evaluates a user's answer to a question.
-  - `/rag/search`: Performs a RAG search.
-  - `/stream/analyze`: Streams the analysis of a resume and job description.
-  - `/stream/evaluate`: Streams the evaluation of a user's answer.
-- The API interacts with the Gemini API via the `GeminiService` in `app/gemini/service.py`.
-- It uses Redis for caching.
+## Project Patterns & Conventions
 
-### UI (`app/ui/main.py`)
+1. **Logging**: Always use `setup_logger()` from `app/utils/logger.py`. Supports `LOG_LEVEL` env var (default: INFO).
 
-- The UI is built with Streamlit.
-- It's a multi-page application with pages for:
-  - Resume Input
-  - Job Description
-  - Run Analysis
-- The UI communicates with the FastAPI backend.
+2. **Pydantic Schemas** (`app/api/schemas.py`): All API I/O uses Pydantic models—`AnalysisRequest`, `FitGraph`, `ResumeAnalysis`, etc. Keeps contracts explicit.
 
-### Agent (`app/agent/workflow.py`)
+3. **Configuration**: Load from `.env` via `python-dotenv` in `app/api/config.py`. Never hardcode secrets. Critical vars: `GEMINI_API_KEY`, `JWT_SECRET_KEY`, `MONGO_URI`, `REDIS_HOST`.
 
-- The agent is intended to be built with LangGraph.
-- The `workflow.py` file is currently empty, so the agent's implementation is a key area for development.
-- The agent will be responsible for orchestrating the analysis process, including RAG retrieval and FitGraph logic.
+4. **Gemini Integration** (`app/gemini/client.py`):
+   - Uses Cloud Run proxy (not direct SDK) for security isolation
+   - Requires `GEMINI_PROXY_URL` and `PROXY_SECRET` env vars
+   - Implements `retry_async` for resilience
+   - Caches embeddings in Redis with TTL
 
-### RAG (`app/rag`)
+5. **Authentication**: JWT-based. `app/api/auth.py` provides `get_current_user`, `require_role`. MongoDB `users` collection stores credentials (bcrypt hashed). Two roles: `user`, `admin`.
 
-- The RAG pipeline uses MongoDB Atlas Vector Search.
-- `ingest.py` is likely for ingesting documents into the vector store.
-- `mongo_vector.py` contains the search logic.
+6. **Agent State** (`app/agent/workflow.py`): Uses `AgentState` TypedDict with `TimeTracker` for performance monitoring. LangGraph graph has nodes: `route_input` → `check_cache` → `search_vectors` → `generate_knowledge` → `perform_final_analysis` → `finalize_output`.
 
-### Conventions
+7. **Error Handling**: Global exception handler in `app/api/server.py` logs and returns 500. Don't swallow exceptions without logging.
 
-- **Logging**: The project uses a custom logger configured in `app/utils/logger.py`. Use this logger for all logging.
-- **Schemas**: Pydantic schemas for API requests and responses are defined in `app/api/schemas.py`.
-- **Configuration**: API configuration is in `app/api/config.py`.
+## Cross-Component Communication
 
-### How to Contribute
+- **UI → API:** HTTP requests to `http://api:8585` (hardcoded in Streamlit, configurable in Docker)
+- **API → Agent:** Instantiate `CareerPilotAgent(gemini_client, redis_client)` and call workflow
+- **Agent ↔ Redis:** State persistence, embeddings cache
+- **Agent ↔ MongoDB:** Vector search via `app.rag.search()`, upserting via `app.rag.upsert()`
+- **API ↔ Gemini:** Via `GeminiClient.call()` to Cloud Run proxy (never direct to Google API)
 
-1.  **Implement the Agent**: The agent is the core of the application, and its implementation is the highest priority. Start by defining the LangGraph workflow in `app/agent/workflow.py`.
-2.  **Enhance the UI**: Improve the Streamlit UI to be more interactive and user-friendly.
-3.  **Add More RAG Sources**: Extend the RAG pipeline to include more data sources.
-4.  **Write Tests**: Add unit and integration tests for the API, agent, and RAG pipeline.
+## Git Workflow
+
+GitFlow model: `develop` (main branch), `feature/<name>` branches, `release/<version>` for staging, `hotfix/<issue>` for production. Always branch from `develop`, PR to `develop` (or `release`/`hotfix` if targeting production).
+
+## Key Files to Know
+
+- `pyproject.toml`: Dependencies (FastAPI, Streamlit, LangGraph, Redis, pymongo, google-genai)
+- `requirements.txt`: Pinned versions
+- `infra/docker/docker-compose.yml`: Local dev environment definition
+- `MockTest/`: Sample resumes and JDs for testing
+- `docs/`: Architecture diagrams, GPU setup, security hardening guides
+
+## Quick Troubleshooting
+
+- **Gemini calls fail:** Check `GEMINI_PROXY_URL`, `PROXY_SECRET`, `GEMINI_API_KEY` in `.env`. Proxy must be reachable.
+- **Redis connection timeout:** Ensure Redis is running; check `REDIS_HOST`, `REDIS_PORT` match Docker service or local instance.
+- **Mongo vector search empty:** Confirm documents upserted with embeddings; check `vectors` collection in `careerpilot` DB.
+- **Tests fail:** Use `fakeredis.aioredis.FakeRedis()` fixture (see `conftest.py`); real Mongo/Redis not available in test env.

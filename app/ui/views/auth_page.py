@@ -46,6 +46,11 @@ def render_auth_page():
                 login(username, password)
             elif choice == "Register":
                 register(username, password, roles, email)
+    
+    if choice == "Login":
+        if st.button("Forgot Password?"):
+            st.session_state["auth_mode"] = "forgot_password"
+            st.rerun()
 
 def login(username, password):
     try:

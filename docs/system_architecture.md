@@ -48,11 +48,16 @@ graph TD
     subgraph External_Services ["Google AI Services"]
         Gemini[("Gemini API\n(Flash/Pro/Vision)")]
     end
+    subgraph Observability ["Observability Layer"]
+        Collector[("SigNoz / OTEL Collector\n(Traces & Logs)")]
+    end
     VidProc -->|1. Vision Request| Proxy
     Gen -->|2. Generate Request| Proxy
     Final -->|3. Analysis Request| Proxy
     
     Proxy <-->|Forward via US IP| Gemini
+    API -.->|OTLP gRPC| Collector
+    Start -.->|Trace Context| Collector
     
     
     classDef darkNode fill:#1a1a1a,stroke:#66b3ff,stroke-width:2px,color:#fff;
@@ -62,6 +67,8 @@ graph TD
     style Agent_Workflow fill:#2d1b00,stroke:#ffaa00,stroke-width:2px,color:#fff
     style Google_Cloud_Platform fill:#001a33,stroke:#3399ff,stroke-width:2px,color:#fff
     style External_Services fill:#002200,stroke:#33cc33,stroke-width:2px,color:#fff
+    style Observability fill:#2c001e,stroke:#ff0066,stroke-width:2px,color:#fff
+    style Collector fill:#660033,stroke:#ff3399,color:#fff
     
     style Proxy fill:#003366,stroke:#66b3ff,stroke-width:4px,color:#fff
     style Redis fill:#330000,stroke:#ff6666,color:#fff
@@ -104,6 +111,10 @@ Based on the expanded architecture (including the Agentic workflow and UI), here
 *   **Why it fits:** Maintains the cost benefits of the Singapore VPS while legally bypassing the IP restrictions via the US-based stateless proxy.
 *   **Verdict:** ✅ **Best in Class for this constraint**.
 
+### 5. **Observability: OpenTelemetry + SigNoz**
+*   **Why it fits:** The agentic workflow is non-deterministic and hard to debug with simple logs. **OpenTelemetry** provides distributed tracing to visualize the full request lifecycle from API to Proxy to Gemini. **SigNoz** (or Jaeger) gives a UI to inspect these traces.
+*   **Verdict:** ✅ **Day 2 Operation Requirement**. Essential for production debugging.
+
 ---
 
 ## 🔑 Key "Suitability" Factors for This Use Case
@@ -114,6 +125,7 @@ Based on the expanded architecture (including the Agentic workflow and UI), here
 | **Solving the Geo-Block** | The **Cloud Run Proxy** acts as a legal "jumphost," removing IP reputation risks from the Singapore data center. |
 | **Rapid Prototyping** | **Streamlit** + **FastAPI** allows for immediate feedback loops on AI responses without frontend overhead. |
 | **Cost Efficiency** | Using **Redis** to intercept requests before they hit Gemini saves significant token costs on repeated queries. |
+| **Full Visibility** | **OpenTelemetry** helps identify bottlenecks in the multi-step agent chain (e.g., "Why did Vector Search take 3s?"). |
 
 ### 🚀 Summary
 This architecture has evolved from a simple API wrapper to a **Stateful, Intelligent Agent System**. It balances the **complexity** of AI orchestration (handled by LangGraph) with the **simplicity** of infrastructure (k3s + MongoDB). The result is a robust, production-capable system running on minimal resources.

@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
+import uuid
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
@@ -7,15 +8,14 @@ from passlib.context import CryptContext
 import os
 from app.api.schemas import TokenData
 from app.utils.mongo_handler import mongo_handler
+from app.api.app_config import get_config
 
 # --- Configuration ---
-try:
-    SECRET_KEY = os.environ["JWT_SECRET_KEY"]
-except KeyError:
-    raise RuntimeError("JWT_SECRET_KEY is not set in the environment.")
+config = get_config()
 
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+SECRET_KEY = config.security.jwt_secret_key
+ALGORITHM = config.security.jwt_algorithm
+ACCESS_TOKEN_EXPIRE_MINUTES = config.security.access_token_expire_minutes
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
@@ -31,11 +31,21 @@ def get_password_hash(password: str) -> str:
 # --- JWT Creation ---
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
+    now = datetime.now(timezone.utc)
     if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
+        expire = now + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
+        expire = now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    
+    # Add standard claims for top-notch security
+    to_encode.update({
+        "exp": expire,
+        "iat": now,
+        "iss": "careerpilot-api",
+        "aud": "careerpilot-ui",
+        "jti": str(uuid.uuid4())
+    })
+    
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
@@ -48,7 +58,15 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     )
 
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        # Validate audience and issuer for enhanced security
+        payload = jwt.decode(
+            token, 
+            SECRET_KEY, 
+            algorithms=[ALGORITHM],
+            options={"verify_aud": True, "verify_iss": True},
+            audience="careerpilot-ui",
+            issuer="careerpilot-api"
+        )
         username: str = payload.get("sub")
         email: str = payload.get("email")
         roles: List[str] = payload.get("roles", [])
@@ -70,7 +88,8 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         "username": user["username"],
         "email": user["email"],
         "roles": user["roles"],
-        "is_active": user["is_active"]
+        "is_active": user["is_active"],
+        "tier": user.get("tier", "free"),
     }
 
 

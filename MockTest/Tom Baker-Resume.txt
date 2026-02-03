@@ -1,0 +1,1 @@
+Name: Tom Baker\nRole: Vue.js Specialist\nSummary: Frontend developer with 4 years specialized in Vue.js and Nuxt.js. Strong JavaScript fundamentals.\nExperience: Frontend Dev at Agency.\nSkills: Vue.js, Vuex, JavaScript (ES6+), Tailwind CSS.

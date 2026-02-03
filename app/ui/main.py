@@ -6,6 +6,9 @@ from app.ui.views.video_page import render_video_page
 from app.ui.views.analysis_page import render_analysis_page
 from app.ui.views.auth_page import render_auth_page
 from app.ui.views.mock_interview_page import render_mock_interview_page
+from app.ui.views.forgot_password_page import render_forgot_password_page
+from app.ui.views.reset_password_page import render_reset_password_page
+from app.ui.views.account_page import render_account_page
 
 st.set_page_config(page_title="CareerPilot", layout="wide")
 
@@ -21,11 +24,28 @@ if "token" not in st.session_state:
 if "current_page" not in st.session_state:
     st.session_state["current_page"] = "Resume Input"
 
+if "auth_mode" not in st.session_state:
+    st.session_state["auth_mode"] = "login" # login, register, forgot
+
+# ---------------------------------------------------------
+# GLOBAL ROUTING (URL Params)
+# ---------------------------------------------------------
+# Check for password reset token in URL
+query_params = st.query_params
+if query_params.get("token") and query_params.get("username"):
+    # If explicitly visiting reset link, override everything
+    render_reset_password_page()
+    st.stop() # Stop rendering the rest
+
 # ---------------------------------------------------------
 # AUTH GATE
 # ---------------------------------------------------------
 if not st.session_state.token:
-    render_auth_page()
+    # Handle sub-pages for unauthenticated users
+    if st.session_state["auth_mode"] == "forgot_password":
+        render_forgot_password_page()
+    else:
+        render_auth_page()
 
 else:
     # ---------------------------------------------------------
@@ -37,6 +57,7 @@ else:
         "Video Upload",
         "Run Analysis",
         "Mock Interview",
+        "My Account"
     ]
 
     page = st.sidebar.radio(
@@ -77,3 +98,6 @@ else:
 
     elif page == "Mock Interview":
         render_mock_interview_page()
+    
+    elif page == "My Account":
+        render_account_page()

@@ -1,0 +1,1 @@
+Job Title: Senior Cloud Infrastructure Engineer\nRequirements: 5+ years experience. Deep knowledge of AWS and Infrastructure as Code (Terraform). Strong containerization skills (Docker/Kubernetes). Ability to script in Python or Go.\nResponsibility: Manage cloud infrastructure and automate deployment pipelines.

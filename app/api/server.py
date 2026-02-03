@@ -1,89 +1,180 @@
 from datetime import datetime
-from fastapi import FastAPI, HTTPException, Request, Depends, status, UploadFile, File
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordRequestForm
-from fastapi.responses import JSONResponse, StreamingResponse
-from app.utils.time_tracker import TimeTracker
-import json
+from fastapi.responses import JSONResponse
 import time
 import uuid
-import tempfile
-import os
 
 from redis import asyncio as aioredis
-from requests import request
 
 from app.utils.logger import setup_logger
 from app.utils.mongo_handler import mongo_handler
-from app.api.auth import (
-    get_password_hash, verify_password, create_access_token,
-    get_current_user, require_role
+
+
+# --- Tracing ---
+from app.utils.tracing import setup_tracing
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.instrumentation.redis import RedisInstrumentor
+from opentelemetry.instrumentation.pymongo import PymongoInstrumentor
+
+# --- Config & Services ---
+from app.api.app_config import get_config
+from app.api.security_services import AccountLockoutService, RateLimiterService, CircuitBreakerService
+from app.api.identity_services import PasswordResetService
+from app.api.monetization_services import QuotaService, StripeService, PaymentService
+
+# --- Gemini Client & Agent ---
+from app.gemini import GeminiClient
+from app.agent.workflow import CareerPilotAgent
+
+# --- Routers (Modular, SOLID-compliant) ---
+from app.api.routers import (
+    auth_router,
+    analysis_router,
+    payment_router,
+    rag_router,
+    health_router,
+    init_auth_services,
+    init_analysis_services,
+    init_payment_services,
+    init_rag_services,
+    init_health_services,
 )
-from app.rag.mongo_vector import search, upsert
-from .schemas import (
-    AnalysisRequest, AnalysisResponse, EvaluateAnswerRequest,
-    EvaluateAnswerResponse, IngestRequest, UserCreate, Token, User
-)
+
+# --- Legacy Routers ---
 from app.api.mock_interview import router as mock_router
 from app.api.analysis_history import router as analysis_history_router
-
-# --- Gemini Modular Imports ---
-from app.gemini import (
-    GeminiClient,
-    evaluate_answer,
-    stream_resume_analysis,
-    stream_evaluation,
-    embed,
-    extract_text_from_video
-)
-
-# --- Agent Imports ---
-from app.agent.workflow import CareerPilotAgent
 
 from .config import API_TITLE, API_VERSION
 
 logger = setup_logger()
+config = get_config()
 
 # --- Redis Client ---
 redis_client = aioredis.Redis(
-    host="redis",
-    port=6379,
-    decode_responses=True
+    host=config.database.redis_host,
+    port=config.database.redis_port,
+    decode_responses=config.database.redis_decode_responses
 )
 
-# --- Gemini Client ---
+# --- Service Initialization ---
+account_lockout_service = AccountLockoutService(redis_client, config)
+rate_limiter_service = RateLimiterService(redis_client, config)
+password_reset_service = PasswordResetService(redis_client, mongo_handler, config)
+quota_service = QuotaService(redis_client, config)
+stripe_service = StripeService(quota_service, mongo_handler, config)
+payment_service = PaymentService(config)
+circuit_breaker_service = CircuitBreakerService(redis_client, "gemini", config)
+
+# --- Gemini Client & Agent ---
 gemini_client = GeminiClient(redis_client=redis_client)
-tracker = TimeTracker()
-# --- LangGraph Agent ---
 agent = CareerPilotAgent(gemini_client=gemini_client, redis_client=redis_client)
 
 # --- FastAPI App ---
 app = FastAPI(title=API_TITLE, version=API_VERSION)
+
+# --- Include Modular Routers (SOLID-Compliant) ---
+app.include_router(health_router.router)
+app.include_router(auth_router.router)
+app.include_router(analysis_router.router)
+app.include_router(payment_router.router)
+app.include_router(rag_router.router)
+
+# --- Include Legacy Routers ---
 app.include_router(mock_router)
 app.include_router(analysis_history_router)
 
-@app.exception_handler(Exception) 
-async def global_exception_handler(request: Request, exc: Exception): 
-    logger.exception("Unhandled exception occurred") 
-    return JSONResponse( status_code=500, content={"error": str(exc)} )
+# --- Initialize Router Services (Dependency Injection) ---
+init_auth_services(account_lockout_service, password_reset_service, quota_service)
+init_analysis_services(agent, gemini_client, rate_limiter_service, quota_service)
+init_payment_services(quota_service, stripe_service, payment_service)
+init_rag_services(gemini_client)
+init_health_services(redis_client)
 
 # ---------------------------------------------------------
-# Startup / Shutdown
+# Global Exception Handler
+# ---------------------------------------------------------
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Global exception handler - logs all unhandled exceptions."""
+    logger.exception("Unhandled exception occurred")
+    return JSONResponse(
+        status_code=500,
+        content={"error": str(exc)}
+    )
+
+
+# ---------------------------------------------------------
+# Startup / Shutdown Events
 # ---------------------------------------------------------
 @app.on_event("startup")
 def startup_event():
+    """Initialize database connections and tracing on startup."""
+    logger.info("Starting up CareerPilot API...")
+    
+    # Initialize Tracing
+    if config.tracing.enabled:
+        setup_tracing(config.tracing.service_name, config.tracing.otlp_endpoint)
+        
+        # Instrument FastAPI
+        FastAPIInstrumentor.instrument_app(app)
+        
+        # Instrument Redis
+        RedisInstrumentor().instrument()
+        
+        # Instrument Mongo
+        PymongoInstrumentor().instrument()
+        
+        logger.info("OpenTelemetry instrumentation enabled.")
+
     mongo_handler.connect()
+    
+    # --- Load Dynamic Config from DB ---
+    try:
+        db_config = await mongo_handler.get_system_config()
+        if db_config:
+            logger.info("Loading dynamic configuration from MongoDB...")
+            
+            # Update specific sections if present in DB
+            # 1. Quota Settings
+            if "quota" in db_config:
+                q_conf = db_config["quota"]
+                # Update attributes in place (since we made valid mutable)
+                if "free_tier_daily_limit" in q_conf:
+                    config.quota.free_tier_daily_limit = q_conf["free_tier_daily_limit"]
+                if "premium_tier_daily_limit" in q_conf:
+                    config.quota.premium_tier_daily_limit = q_conf["premium_tier_daily_limit"]
+                logger.info("Updated Quota settings from DB")
+
+            # 2. Gemini Settings (Models)
+            if "gemini" in db_config:
+                g_conf = db_config["gemini"]
+                if "gemini_model" in g_conf:
+                    config.gemini.gemini_model = g_conf["gemini_model"]
+                if "gemini_vision_model" in g_conf:
+                    config.gemini.gemini_vision_model = g_conf["gemini_vision_model"]
+                logger.info("Updated Gemini settings from DB")
+
+    except Exception as e:
+        logger.error(f"Failed to load dynamic config from DB: {e}")
+
+    logger.info("✅ API startup complete")
+
 
 @app.on_event("shutdown")
 def shutdown_event():
+    """Close database connections on shutdown."""
+    logger.info("Shutting down CareerPilot API...")
     mongo_handler.close()
+    logger.info("✅ API shutdown complete")
 
 
 # ---------------------------------------------------------
-# Middleware
+# Middleware: Request Logging & Session Tracking
 # ---------------------------------------------------------
 @app.middleware("http")
 async def db_handler_middleware(request: Request, call_next):
+    """Middleware to track sessions and log requests."""
     start_time = time.time()
     session_id = str(uuid.uuid4())
 
@@ -108,7 +199,7 @@ async def db_handler_middleware(request: Request, call_next):
 
 
 # ---------------------------------------------------------
-# CORS
+# Middleware: CORS
 # ---------------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
@@ -118,214 +209,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 # ---------------------------------------------------------
-# Auth Endpoints
+# API Documentation
 # ---------------------------------------------------------
-@app.post("/auth/register", status_code=status.HTTP_201_CREATED)
-async def register_user(user: UserCreate):
-    existing_user = await mongo_handler.get_user(user.username)
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already registered",
-        )
-
-    hashed_password = get_password_hash(user.password)
-    await mongo_handler.create_user({
-        "email": user.email, 
-        "username": user.username, 
-        "password_hash": hashed_password,
-        "roles": user.roles, 
-        "is_active": True, 
-        "created_at": datetime.now(), 
-        "updated_at": datetime.now(),
-    })
-
-    return {"message": "User created successfully"}
-
-
-@app.post("/auth/token", response_model=Token)
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = await mongo_handler.get_user(form_data.username)
-
-    if not user or not verify_password(form_data.password, user["password_hash"]):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    if not user["is_active"]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Inactive user"
-        )
-
-    token = create_access_token(
-        data={"sub": user["username"], "roles": user["roles"], 
-              "email": user["email"]}
-    )
-
-    return {"access_token": token, "token_type": "bearer"}
-
-
-@app.get("/users/me", response_model=User)
-async def read_users_me(current_user: dict = Depends(get_current_user)):
-    return current_user
-
-
+# Endpoint documentation is auto-generated from router docstrings.
+# View API docs at: http://localhost:8585/docs (Swagger UI)
+# Or at: http://localhost:8585/redoc (ReDoc)
+#
+# Routers organize endpoints by domain (SOLID principle):
+# - auth_router: User registration, login, password reset
+# - analysis_router: Resume + video analysis, evaluation
+# - payment_router: Stripe integration, premium upgrade
+# - rag_router: Vector search and document ingestion
+# - health_router: Health checks and system status
+#
+# Legacy routers (mock_interview, analysis_history) are also included.
 # ---------------------------------------------------------
-# Health Check
-# ---------------------------------------------------------
-@app.get("/health")
-def health_check():
-    return {"status": "ok"}
 
-
-# ---------------------------------------------------------
-# Resume + JD Analysis
-# ---------------------------------------------------------
-@app.post("/analyze", response_model=AnalysisResponse)
-async def analyze(request: AnalysisRequest, current_user: dict = Depends(get_current_user)):
-    logger.info(f"Received text analysis request from user '{current_user['username']}'")
-    tracker.mark("text_api_request_received")
-    inputs = {
-        "resume_text": request.resume_text,
-        "jd_text": request.jd_text,
-    }
-    tracker.mark("text_inputs_prepared")
-    try:
-
-        final_state = await agent.workflow.ainvoke(inputs)
-        logger.info("Graph workflow completed for text.")
-        result = final_state.get("final_result")
-        if not result:
-            raise HTTPException(status_code=500, detail="Agent workflow failed to produce a result.")
-        
-        logger.info("Performance Metrics: %s", result["performance_metrics"])
-        return AnalysisResponse(**final_state.get("final_result", {}))
-    except Exception as e:
-        logger.error(f"Analysis failed during agent execution: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# ---------------------------------------------------------
-# Video Analysis
-# ---------------------------------------------------------
-@app.post("/analyze_video", response_model=AnalysisResponse)
-async def analyze_video(
-    current_user: dict = Depends(get_current_user),
-    video_file: UploadFile = File(...)
-):
-    tracker.mark("video_api_request_received")
-    if not video_file.content_type.startswith("video/"):
-        raise HTTPException(status_code=400, detail="Invalid file type. Please upload a video.")
-
-    # Create temp file
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
-        tmp.write(await video_file.read())
-        video_path = tmp.name
-    tracker.mark("video_file_saved_to_temp")
-    logger.info(f"Video saved to temporary file: {video_path}")
-
-    try:
-        # Prepare workflow input
-        inputs = {"video_file_path": video_path}
-
-        # Run the workflow (langgraph 0.2.3)
-        final_state = await agent.workflow.ainvoke(inputs)
-        logger.info("Graph workflow completed for video.")
-        # Validate workflow output
-        if not isinstance(final_state, dict):
-            raise HTTPException(500, "Workflow returned invalid state")
-
-        result = final_state.get("final_result")
-        if not isinstance(result, dict):
-            raise HTTPException(500, "Workflow failed to produce final_result")
-
-        # Return the final result (FastAPI will validate against AnalysisResponse)
-        return AnalysisResponse(**final_state.get("final_result", {}))
-
-    finally:
-        # Cleanup temp file
-        if os.path.exists(video_path):
-            os.remove(video_path)
-
-# ---------------------------------------------------------
-# Evaluate Answer
-# ---------------------------------------------------------
-@app.post("/evaluate_answer", response_model=EvaluateAnswerResponse)
-async def evaluate_answer_api(
-    payload: EvaluateAnswerRequest,
-    current_user: dict = Depends(get_current_user)
-):  
-    tracker.mark("evaluate_answer_request_received")
-    return await evaluate_answer(
-        gemini_client,
-        payload.question,
-        payload.user_answer,
-        payload.resume_text,
-        payload.jd_text
-    )
-
-
-# ---------------------------------------------------------
-# RAG Search
-# ---------------------------------------------------------
-@app.post("/rag/search")
-async def rag_search(query: str, current_user: dict = Depends(get_current_user)):
-    embedding_vector = await embed(gemini_client, query)
-    results = search(embedding_vector, top_k=5)
-    return {"results": results}
-
-
-# ---------------------------------------------------------
-# RAG Ingest
-# ---------------------------------------------------------
-@app.post("/rag/ingest")
-async def rag_ingest(payload: IngestRequest, current_user: dict = Depends(require_role("admin"))):
-    try:
-        embedding_vector = await embed(gemini_client, payload.text)
-
-        document = {
-            "text": payload.text,
-            "embedding": embedding_vector,
-            "source": payload.source
-        }
-
-        result = await upsert(document)
-        return {"status": "success", "inserted_id": str(result.upserted_id)}
-
-    except Exception as e:
-        logger.error(f"RAG ingestion failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# ---------------------------------------------------------
-# Streaming Endpoints
-# ---------------------------------------------------------
-@app.post("/stream/analyze")
-async def stream_analyze(request: AnalysisRequest, current_user: dict = Depends(get_current_user)):
-    return StreamingResponse(
-        stream_resume_analysis(
-            gemini_client,
-            request.resume_text,
-            request.jd_text,
-        ),
-        media_type="text/plain"
-    )
-
-
-@app.post("/stream/evaluate")
-async def stream_evaluate(payload: EvaluateAnswerRequest, current_user: dict = Depends(get_current_user)):
-    return StreamingResponse(
-        stream_evaluation(
-            gemini_client,
-            payload.question,
-            payload.user_answer,
-            payload.resume_text,
-            payload.jd_text,
-        ),
-        media_type="text/plain"
-    )

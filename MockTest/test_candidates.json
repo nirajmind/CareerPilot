@@ -1,0 +1,51 @@
+[
+    {
+        "id": "pair_1",
+        "expected_type": "perfect_match",
+        "description": "High probability match with matching keywords and role.",
+        "resume_text": "Name: Sarah Jenkins\nRole: Senior DevOps Engineer\nSummary: 7 years managing AWS infrastructure, expert in Kubernetes (EKS), Terraform, and CI/CD pipelines (Jenkins/GitLab). Python scripting for automation.\nExperience: Lead DevOps at FintechCorp (migrated to microservices).\nSkills: AWS, Terraform, Docker, Python, Linux.",
+        "jd_text": "Job Title: Senior Cloud Infrastructure Engineer\nRequirements: 5+ years experience. Deep knowledge of AWS and Infrastructure as Code (Terraform). Strong containerization skills (Docker/Kubernetes). Ability to script in Python or Go.\nResponsibility: Manage cloud infrastructure and automate deployment pipelines."
+    },
+    {
+        "id": "pair_2",
+        "expected_type": "tech_stack_clash",
+        "description": "Backend role but incompatible languages (Java vs Node.js).",
+        "resume_text": "Name: Rahul Varma\nRole: Backend Developer\nSummary: Expert Java Developer with 5 years experience building enterprise applications using Spring Boot and Hibernate. Strong SQL knowledge.\nExperience: Backend dev at InsureTech.\nSkills: Java 17, Spring Boot, Maven, Oracle DB, JUnit.",
+        "jd_text": "Job Title: Senior Backend Engineer (Node.js)\nRequirements: Expert in server-side JavaScript/TypeScript. Deep understanding of Node.js event loop. Experience with Express.js or NestJS.\nResponsibility: Build scalable APIs for a real-time chat application."
+    },
+    {
+        "id": "pair_3",
+        "expected_type": "seniority_gap",
+        "description": "Candidate is too junior for a Staff level role.",
+        "resume_text": "Name: Alex Chen\nRole: Junior Frontend Developer\nSummary: Recent bootcamp graduate with 1 year of freelance experience building React websites. Passionate about UI/UX.\nExperience: Freelance Web Dev (1 year).\nSkills: React.js, HTML/CSS, JavaScript, Figma.",
+        "jd_text": "Job Title: Staff Frontend Architect\nRequirements: 10+ years of software engineering experience. Proven track record of leading large-scale frontend architecture overhauls. Deep knowledge of browser internals.\nResponsibility: Define the frontend technical strategy for the entire organization."
+    },
+    {
+        "id": "pair_4",
+        "expected_type": "domain_confusion",
+        "description": "Data Analyst applying for Data Engineering (different skills).",
+        "resume_text": "Name: Maria Gonzalez\nRole: Data Analyst\nSummary: Data Analyst skilled in Tableau, PowerBI, and Excel. Proficient in SQL for data extraction and reporting.\nExperience: Analyst at RetailCo, creating sales dashboards for management.\nSkills: SQL, Tableau, Excel, Presentation skills.",
+        "jd_text": "Job Title: Data Engineer\nRequirements: Strong coding skills in Python/Scala. Experience building ETL pipelines (Airflow/Spark). Knowledge of Data Warehousing (Snowflake/Redshift).\nResponsibility: Build and maintain the data pipeline architecture; optimize data flow for analytics teams."
+    },
+    {
+        "id": "pair_5",
+        "expected_type": "career_pivot",
+        "description": "Manual QA moving to Automation (transferable skills).",
+        "resume_text": "Name: David Kim\nRole: Manual QA Tester\nSummary: QA Specialist with 4 years experience in manual testing. Recently completed a Python automation course and built a Selenium test suite.\nExperience: QA Analyst at GameStudio.\nSkills: Manual Testing, Jira, Python (Basic), Selenium, PyTest.",
+        "jd_text": "Job Title: Junior SDET (Software Development Engineer in Test)\nRequirements: 1-3 years in QA. Willingness to learn automation. Basic knowledge of a scripting language (Python/Java).\nResponsibility: Transition from manual to automated testing frameworks."
+    },
+    {
+        "id": "pair_6",
+        "expected_type": "overqualified",
+        "description": "VP/Executive applying for mid-level dev role.",
+        "resume_text": "Name: Elena Rousseau\nRole: VP of Engineering\nSummary: 15+ years managing teams of 50+ engineers. Expert in strategic planning, budgeting, and hiring. Former CTO of a startup.\nExperience: VP Engineering at BigTech.\nSkills: Leadership, Budgeting, Agile Scaling, Strategic Hiring.",
+        "jd_text": "Job Title: Mid-Level Python Developer\nRequirements: 3-5 years experience writing clean code. Ability to work in a Scrum team.\nResponsibility: Write code, fix bugs, and participate in daily standups."
+    },
+    {
+        "id": "pair_7",
+        "expected_type": "framework_swap",
+        "description": "Vue.js expert applying for React role (should be a 'maybe' or 'learnable').",
+        "resume_text": "Name: Tom Baker\nRole: Vue.js Specialist\nSummary: Frontend developer with 4 years specialized in Vue.js and Nuxt.js. Strong JavaScript fundamentals.\nExperience: Frontend Dev at Agency.\nSkills: Vue.js, Vuex, JavaScript (ES6+), Tailwind CSS.",
+        "jd_text": "Job Title: React Developer\nRequirements: Strong proficiency in JavaScript. Experience with modern frontend frameworks (React preferred, but Angular/Vue experience considered).\nResponsibility: Migrate legacy code to a modern component-based architecture."
+    }
+]

@@ -1,0 +1,1 @@
+Job Title: Junior SDET (Software Development Engineer in Test)\nRequirements: 1-3 years in QA. Willingness to learn automation. Basic knowledge of a scripting language (Python/Java).\nResponsibility: Transition from manual to automated testing frameworks.

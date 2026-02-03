@@ -1,0 +1,1 @@
+Name: David Kim\nRole: Manual QA Tester\nSummary: QA Specialist with 4 years experience in manual testing. Recently completed a Python automation course and built a Selenium test suite.\nExperience: QA Analyst at GameStudio.\nSkills: Manual Testing, Jira, Python (Basic), Selenium, PyTest.

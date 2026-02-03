@@ -1,0 +1,1 @@
+Name Sarah JenkinsnRole Senior DevOps EngineernSummary 7 years managing AWS infrastructure, expert in Kubernetes (EKS), Terraform, and CICD pipelines (JenkinsGitLab). Python scripting for automation.nExperience Lead DevOps at FintechCorp (migrated to microservices).nSkills AWS, Terraform, Docker, Python, Linux.
