@@ -19,7 +19,7 @@ Before you begin, ensure you have the following:
 3. **Docker installed** on your local machine for building images.
 4. **Access to a Docker registry** (like Docker Hub, GCR, or ACR) where you can push your images.
 5. **Caddy installed and running** on your Kubernetes node (the VM).
-6. **Your domain name (`careerpilot.duckdns.org`) pointing to your VM's public IP address.**
+6. **Your domain name (`careerpilot.chickenkiller.com`) pointing to your VM's public IP address.**
 7. **Your Gemini API Key.**
 
 The steps below will guide you through installing the necessary software (Kubernetes, Docker, etc.) on your VM.
@@ -181,7 +181,7 @@ This command applies all the remaining manifests (`mongo`, `redis`, `api`,`agent
 On your VM, add the following block to your `Caddyfile` and reload Caddy's configuration.
 
 ```caddy
-careerpilot.duckdns.org {
+careerpilot.chickenkiller.com {
     # Caddy will automatically handle HTTPS
     reverse_proxy localhost:30001
 }
@@ -222,7 +222,7 @@ You should see the services for `mongo`, `redis`, `api`, and `ui`. Note the `Nod
 ```
 
 1. **Access your application:**
-    Once all pods are running, you should be able to access your application at `https://careerpilot.duckdns.org`.
+    Once all pods are running, you should be able to access your application at `https://careerpilot.chickenkiller.com`.
 
 ---
 

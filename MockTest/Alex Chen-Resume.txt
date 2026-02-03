@@ -1,0 +1,1 @@
+Name: Alex Chen\nRole: Junior Frontend Developer\nSummary: Recent bootcamp graduate with 1 year of freelance experience building React websites. Passionate about UI/UX.\nExperience: Freelance Web Dev (1 year).\nSkills: React.js, HTML/CSS, JavaScript, Figma.

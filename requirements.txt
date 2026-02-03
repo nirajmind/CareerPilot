@@ -25,6 +25,7 @@ pymongo==4.10.1
 google-genai==0.3.0
 
 # --- Auth / Security ---
+stripe==8.1.0
 passlib[bcrypt]==1.7.4
 argon2-cffi==23.1.0
 python-jose[cryptography]==3.3.0
@@ -44,3 +45,12 @@ fakeredis==2.23.3
 torch
 torchvision
 torchaudio
+
+# --- Observability / Tracing ---
+opentelemetry-api==1.27.0
+opentelemetry-sdk==1.27.0
+opentelemetry-exporter-otlp==1.27.0
+opentelemetry-instrumentation-fastapi==0.48b0
+opentelemetry-instrumentation-redis==0.48b0
+opentelemetry-instrumentation-pymongo==0.48b0
+python-json-logger==2.0.7

@@ -51,40 +51,64 @@ async def evaluate_answer(client, question, answer, resume, jd):
     text = resp["candidates"][0]["content"]["parts"][0]["text"]
     return safe_json_parse(text)
 
-async def stream_resume_analysis(self, resume: str, jd: str):
-    prompt_template = await self.prompts.get("analyze_resume")
+async def stream_resume_analysis(client, resume: str, jd: str):
+    prompt_template = await client.prompts.get("analyze_resume")
     prompt = prompt_template.format(resume=resume, jd=jd)
     
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}]
+    }
+
     try:
-        async_stream = await self.client.models.generate_content_stream(
-            model=self.chat_model,
-            contents=prompt,
-        )
-        async for chunk in async_stream:
-            yield chunk.text or ""
+        # Use our proxy-aware streaming method
+        async for chunk_obj in client.call_stream(
+            "stream_resume_analysis",
+            f"{client.chat_model}:generateContent",
+            payload
+        ):
+            # chunk_obj is the raw JSON response
+            # Navigate to candidates[0].content.parts[0].text
+            try:
+                text_chunk = chunk_obj["candidates"][0]["content"]["parts"][0]["text"]
+                if text_chunk:
+                    yield text_chunk
+            except (KeyError, IndexError):
+                # Some chunks might be metadata or empty
+                continue
+                
     except Exception as e:
         logger.error(f"Error streaming resume analysis: {e}")
         yield f"[ERROR] {str(e)}"
 
-async def stream_evaluation(self, question: str, answer: str, resume: str, jd: str):
-    prompt_template = await self.prompts.get("evaluate_answer")
-    logger.info(f"Prompt template:\n{prompt_template}")
+async def stream_evaluation(client, question: str, answer: str, resume: str, jd: str):
+    prompt_template = await client.prompts.get("evaluate_answer")
+    logger.info(f"Prompt template length: {len(prompt_template)}")
+    
     prompt = prompt_template.format(
         question=question,
         answer=answer,
         resume=resume,
         jd=jd,
     )
-    logger.info(f"Formatted prompt:\n{prompt}")
+    
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}]
+    }
+    
     try:
-        async_stream = self.client.models.generate_content_stream(
-            model=self.chat_model,
-            contents=prompt,
-        )
-        async for chunk in async_stream:
-            text = chunk.text or "" 
-            logger.info(f"Streamed chunk: {text}") 
-            yield text
+        async for chunk_obj in client.call_stream(
+            "stream_evaluation",
+            f"{client.chat_model}:generateContent",
+            payload
+        ):
+            try:
+                text_chunk = chunk_obj["candidates"][0]["content"]["parts"][0]["text"]
+                if text_chunk:
+                    logger.debug(f"Streamed chunk: {text_chunk[:20]}...") 
+                    yield text_chunk
+            except (KeyError, IndexError):
+                continue
+                
     except Exception as e:
         logger.error(f"Error streaming evaluation: {e}")
         yield f"[ERROR] {str(e)}"

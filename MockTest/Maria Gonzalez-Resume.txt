@@ -1,0 +1,1 @@
+Name: Maria Gonzalez\nRole: Data Analyst\nSummary: Data Analyst skilled in Tableau, PowerBI, and Excel. Proficient in SQL for data extraction and reporting.\nExperience: Analyst at RetailCo, creating sales dashboards for management.\nSkills: SQL, Tableau, Excel, Presentation skills.

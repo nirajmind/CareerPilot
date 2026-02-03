@@ -1,0 +1,1 @@
+Job Title: React Developer\nRequirements: Strong proficiency in JavaScript. Experience with modern frontend frameworks (React preferred, but Angular/Vue experience considered).\nResponsibility: Migrate legacy code to a modern component-based architecture.

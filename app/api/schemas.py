@@ -146,3 +146,73 @@ class AnalysisResult(BaseModel):
     source: Optional[str] = "text"  # "text" or "video"
     timestamp: datetime = Field(default_factory=datetime.now)
 
+
+# --- Password Reset Schemas ---
+
+class PasswordResetRequest(BaseModel):
+    """Request password reset email."""
+    username: str
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    """Confirm password reset with new password."""
+    username: str
+    token: str
+    new_password: str = Field(..., min_length=8)
+
+
+class PasswordResetResponse(BaseModel):
+    """Response after password reset."""
+    success: bool
+    message: str
+
+
+# --- Quota & Account Status Schemas ---
+
+class QuotaInfo(BaseModel):
+    """User quota information."""
+    usage: int
+    limit: int
+    remaining: int
+    tier: str  # "free" or "premium"
+    reset_at: str  # ISO timestamp
+
+
+class AccountStatus(BaseModel):
+    """Account status information."""
+    username: str
+    email: EmailStr
+    is_active: bool
+    is_locked: bool
+    tier: str
+    quota: QuotaInfo
+    roles: List[str]
+
+
+# --- Payment & Stripe Schemas ---
+
+class CheckoutSessionRequest(BaseModel):
+    """Request to create Stripe checkout session."""
+    username: str
+    email: EmailStr
+
+
+class CheckoutSessionResponse(BaseModel):
+    """Stripe checkout session response."""
+    session_id: str
+    redirect_url: str
+    status: str
+
+
+class StripeWebhookPayload(BaseModel):
+    """Stripe webhook event payload."""
+    type: str
+    data: dict
+
+
+class WebhookResponse(BaseModel):
+    """Generic webhook response."""
+    success: bool
+    message: str
+

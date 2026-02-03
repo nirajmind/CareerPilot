@@ -42,7 +42,7 @@ We instrumented every step with millisecond‑level timestamps to understand rea
 
 # **Challenges we ran into**
 - **Gemini LLM latency**: 50–60 seconds per analysis, dominating 95% of total runtime  
-- **DNS + HTTPS deployment**: DuckDNS and Dynu failed for ACME challenges; solved via FreeDNS + HTTP‑01  
+- **DNS + HTTPS deployment**: Previous providers failed for ACME challenges; solved via FreeDNS + HTTP‑01  
 - **Containerd vs Docker**: Local images weren’t visible to k3s until we rebuilt the pipeline  
 - **Multimodal extraction**: Video‑to‑text required careful frame handling and fallback logic  
 - **Prompt engineering**: Ensuring structured, deterministic outputs from Gemini  

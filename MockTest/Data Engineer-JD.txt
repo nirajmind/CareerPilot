@@ -1,0 +1,1 @@
+Job Title: Data Engineer\nRequirements: Strong coding skills in Python/Scala. Experience building ETL pipelines (Airflow/Spark). Knowledge of Data Warehousing (Snowflake/Redshift).\nResponsibility: Build and maintain the data pipeline architecture; optimize data flow for analytics teams.
