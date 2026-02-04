@@ -142,7 +142,18 @@ to:
 image: your-docker-username/careerpilot-api:1.0.0
 ```
 
+image: your-docker-username/careerpilot-api:1.0.0
+```
+
 Repeat this for all three deployment files.
+
+3. **Configure Monitoring Endpoint (API):**
+In `infra/k8s/api-deployment.yml`, update the `OTLP_ENDPOINT` environment variable to point to your internal Jaeger service:
+
+```yaml
+- name: OTLP_ENDPOINT
+  value: "http://jaeger-collector.careerpilot:4318"  # Internal K8s DNS
+```
 
 ---
 
@@ -172,6 +183,12 @@ This command applies all the remaining manifests (`mongo`, `redis`, `api`,`agent
 
 ```bash
     kubectl apply -f infra/k8s/
+```
+
+1. **Deploy Monitoring (Jaeger):**
+
+```bash
+    kubectl apply -f infra/k8s/monitoring.yml
 ```
 
 ---
@@ -209,7 +226,7 @@ You should see pods for `mongo`, `redis`, `api`, `agent`, and `ui` with a status
     kubectl get services -n careerpilot
 ```
 
-You should see the services for `mongo`, `redis`, `api`, and `ui`. Note the `NodePort` for the `ui` service.
+You should see the services for `mongo`, `redis`, `api`, `ui`, and `jaeger-collector`. Note the `NodePort` for the `ui` service.
 
 1. **Check the logs of a pod (for troubleshooting):**
 
@@ -223,6 +240,14 @@ You should see the services for `mongo`, `redis`, `api`, and `ui`. Note the `Nod
 
 1. **Access your application:**
     Once all pods are running, you should be able to access your application at `https://careerpilot.chickenkiller.com`.
+
+1. **Access Jaeger UI (Tracing):**
+    For security, the Jaeger UI is not exposed publicly by default. You can access it via port-forwarding:
+
+    ```bash
+    kubectl port-forward svc/jaeger-collector 16686:16686 -n careerpilot
+    ```
+    Then open `http://localhost:16686` in your browser to view traces.
 
 ---
 

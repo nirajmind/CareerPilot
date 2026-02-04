@@ -78,7 +78,39 @@ spec:
           valueFrom:
             secretKeyRef:
               name: careerpilot-secrets
-              key: PROXY_SECRET      
+              key: PROXY_SECRET
+        # --- Monetization (Stripe) ---
+        - name: STRIPE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: careerpilot-secrets
+              key: STRIPE_API_KEY
+        - name: STRIPE_WEBHOOK_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: careerpilot-secrets
+              key: STRIPE_WEBHOOK_SECRET
+        - name: STRIPE_PRICE_ID_PREMIUM
+          valueFrom:
+            secretKeyRef:
+              name: careerpilot-secrets
+              key: STRIPE_PRICE_ID_PREMIUM
+        # --- Email (Gmail) ---
+        - name: GMAIL_SENDER_EMAIL
+          valueFrom:
+            secretKeyRef:
+              name: careerpilot-secrets
+              key: GMAIL_SENDER_EMAIL
+        - name: GMAIL_APP_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: careerpilot-secrets
+              key: GMAIL_APP_PASSWORD
+        # --- Observability ---
+        - name: TRACING_ENABLED
+          value: "true"
+        - name: OTLP_ENDPOINT
+          value: "http://jaeger-collector.careerpilot:4318"      
 
 ---
 apiVersion: v1
