@@ -42,13 +42,16 @@ deploy:
 	@echo "$(YELLOW)[K8S] Restarting deployments...$(NC)"
 	sed -i "s/__TAG__/$(TAG)/g" infra/k8s/ui-deployment.yml
 	sed -i "s/__TAG__/$(TAG)/g" infra/k8s/api-deployment.yml
+	kubectl apply -f infra/k8s/api-deployment.yml
+	kubectl apply -f infra/k8s/ui-deployment.yml
 	kubectl rollout restart deployment ui $(KNS)
 	kubectl rollout restart deployment api $(KNS)
 	@echo "$(GREEN)[K8S] Deployments restarted.$(NC)"
 
 clean:
 	@echo "$(RED)[CLEAN] Pruning Docker...$(NC)"
-	docker system prune -af
+	docker image rm $(docker images 'careerpilot-ui' -q)
+	docker image rm $(docker images 'careerpilot-api' -q)
 	@echo "$(RED)[CLEAN] Pruning containerd...$(NC)"
 	$(CTR) images prune
 	@echo "$(GREEN)[CLEAN] Cleanup complete.$(NC)"
