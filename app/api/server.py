@@ -108,7 +108,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 # Startup / Shutdown Events
 # ---------------------------------------------------------
 @app.on_event("startup")
-def startup_event():
+async def startup_event():
     """Initialize database connections and tracing on startup."""
     logger.info("Starting up CareerPilot API...")
     
