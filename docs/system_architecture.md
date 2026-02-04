@@ -49,14 +49,14 @@ graph TD
         Gemini[("Gemini API\n(Flash/Pro/Vision)")]
     end
     subgraph Observability ["Observability Layer"]
-        Collector[("SigNoz / OTEL Collector\n(Traces & Logs)")]
+        Collector[("Jaeger All-In-One\n(Collector + UI + Store)")]
     end
     VidProc -->|1. Vision Request| Proxy
     Gen -->|2. Generate Request| Proxy
     Final -->|3. Analysis Request| Proxy
     
     Proxy <-->|Forward via US IP| Gemini
-    API -.->|OTLP gRPC| Collector
+    API -.->|OTLP HTTP/gRPC| Collector
     Start -.->|Trace Context| Collector
     
     
