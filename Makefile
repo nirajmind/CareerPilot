@@ -77,6 +77,9 @@ cleanup:
 	@$(CTR) images ls | grep careerpilot-ui | sort -k2 | head -n -1 | awk '{print $$1}' | xargs -r $(CTR) images rm
 	@$(CTR) images ls | grep careerpilot-api | sort -k2 | head -n -1 | awk '{print $$1}' | xargs -r $(CTR) images rm
 
+	@echo "$(RED)[CLEAN] Removing tarballs...$(NC)"
+	rm -f *.tar
+
 	@echo "$(GREEN)[CLEAN] Cleanup complete.$(NC)"
 
 # ===== STATUS =====
