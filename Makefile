@@ -53,6 +53,10 @@ api:
 
 deploy:
 	@echo "$(YELLOW)[K8S] Updating deployment YAMLs with tag $(TAG)...$(NC)"
+
+	cp infra/k8s/ui-deployment.yml.template infra/k8s/ui-deployment.yml
+	cp infra/k8s/api-deployment.yml.template infra/k8s/api-deployment.yml
+
 	sed -i "s/__TAG__/$(TAG)/g" infra/k8s/ui-deployment.yml
 	sed -i "s/__TAG__/$(TAG)/g" infra/k8s/api-deployment.yml
 
