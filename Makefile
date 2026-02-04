@@ -74,8 +74,8 @@ cleanup:
 	@docker images 'careerpilot-api' --format "{{.Repository}}:{{.Tag}}" | grep -v $(TAG) | xargs -r docker rmi
 
 	@echo "$(RED)[CLEAN] Removing old containerd images (keeping latest)...$(NC)"
-	@$(CTR) images ls | grep careerpilot-ui | grep -v $(TAG) | awk '{print $$1}' | xargs -r $(CTR) images rm
-	@$(CTR) images ls | grep careerpilot-api | grep -v $(TAG) | awk '{print $$1}' | xargs -r $(CTR) images rm
+	@$(CTR) images ls | grep careerpilot-ui | sort -k2 | head -n -1 | awk '{print $$1}' | xargs -r $(CTR) images rm
+	@$(CTR) images ls | grep careerpilot-api | sort -k2 | head -n -1 | awk '{print $$1}' | xargs -r $(CTR) images rm
 
 	@echo "$(GREEN)[CLEAN] Cleanup complete.$(NC)"
 
