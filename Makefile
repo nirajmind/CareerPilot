@@ -40,8 +40,8 @@ api:
 
 deploy:
 	@echo "$(YELLOW)[K8S] Restarting deployments...$(NC)"
-	sed -i "s/__TAG__/$(TAG)/g" infra/ui-deployment.yml
-	sed -i "s/__TAG__/$(TAG)/g" infra/api-deployment.yml
+	sed -i "s/__TAG__/$(TAG)/g" infra/k8s/ui-deployment.yml
+	sed -i "s/__TAG__/$(TAG)/g" infra/k8s/api-deployment.yml
 	kubectl rollout restart deployment ui $(KNS)
 	kubectl rollout restart deployment api $(KNS)
 	@echo "$(GREEN)[K8S] Deployments restarted.$(NC)"
