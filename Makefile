@@ -73,13 +73,19 @@ deploy:
 # ===== CLEANUP =====
 
 cleanup:
-	@echo "$(RED)[CLEAN] Removing old Docker images (keeping latest)...$(NC)"
+	@echo "$(YELLOW)[CLEAN] Waiting for containerd to index images...$(NC)"
+	sleep 3
 	@docker images 'careerpilot-ui' --format "{{.Repository}}:{{.Tag}}" | grep -v $(TAG) | xargs -r docker rmi
 	@docker images 'careerpilot-api' --format "{{.Repository}}:{{.Tag}}" | grep -v $(TAG) | xargs -r docker rmi
 
 	@echo "$(RED)[CLEAN] Removing old containerd images (keeping latest)...$(NC)"
-	@$(CTR) images ls | grep careerpilot-ui | sort -k2 | head -n -1 | awk '{print $$1}' | xargs -r $(CTR) images rm
-	@$(CTR) images ls | grep careerpilot-api | sort -k2 | head -n -1 | awk '{print $$1}' | xargs -r $(CTR) images rm
+	# Keep only the latest UI image
+	LATEST_UI=$(CTR) images ls | grep careerpilot-ui | awk '{print $$1}' | grep $(TAG)
+	$(CTR) images ls | grep careerpilot-ui | awk '{print $$1}' | grep -v $(TAG) | xargs -r $(CTR) images rm
+
+	# Keep only the latest API image
+	LATEST_API=$(CTR) images ls | grep careerpilot-api | awk '{print $$1}' | grep $(TAG)
+	$(CTR) images ls | grep careerpilot-api | awk '{print $$1}' | grep -v $(TAG) | xargs -r $(CTR) images rm
 
 	@echo "$(RED)[CLEAN] Removing tarballs...$(NC)"
 	rm -f *.tar
