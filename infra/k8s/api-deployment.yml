@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: api
-        image: careerpilot-api:latest # IMPORTANT: Replace with your actual image path
+        image: careerpilot-api:rate-limit-fix # IMPORTANT: Replace with your actual image path
         imagePullPolicy: IfNotPresent
         resources:
           requests:
