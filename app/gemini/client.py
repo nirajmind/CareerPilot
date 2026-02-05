@@ -29,6 +29,12 @@ class GeminiClient:
         self.vision_model = os.getenv("GEMINI_VISION_MODEL", "models/gemini-pro-vision")
         self.embedding_model = os.getenv("GEMINI_EMBEDDING_MODEL", "v1/models/text-embedding-004")
 
+        # Fix: Ensure version prefix exists for Proxy compatibility
+        if not self.chat_model.startswith("v1"):
+            self.chat_model = f"v1beta/{self.chat_model}"
+        if not self.vision_model.startswith("v1"):
+            self.vision_model = f"v1beta/{self.vision_model}"
+
         # HTTP client
         self.http = httpx.AsyncClient(timeout=60)
 

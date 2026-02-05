@@ -148,8 +148,10 @@ async def startup_event():
                 g_conf = db_config["gemini"]
                 if "gemini_model" in g_conf:
                     config.gemini.gemini_model = g_conf["gemini_model"]
+                    gemini_client.chat_model = config.gemini.gemini_model # Sync to client
                 if "gemini_vision_model" in g_conf:
                     config.gemini.gemini_vision_model = g_conf["gemini_vision_model"]
+                    gemini_client.vision_model = config.gemini.gemini_vision_model # Sync to client
                 logger.info("Updated Gemini settings from DB")
 
     except Exception as e:
