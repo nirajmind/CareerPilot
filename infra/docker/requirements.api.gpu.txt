@@ -45,3 +45,12 @@ fakeredis==2.23.3
 torch
 torchvision
 torchaudio
+
+# --- Observability / Tracing ---
+opentelemetry-api==1.27.0
+opentelemetry-sdk==1.27.0
+opentelemetry-exporter-otlp==1.27.0
+opentelemetry-instrumentation-fastapi==0.48b0
+opentelemetry-instrumentation-redis==0.48b0
+opentelemetry-instrumentation-pymongo==0.48b0
+python-json-logger==2.0.7
