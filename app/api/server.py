@@ -73,6 +73,16 @@ agent = CareerPilotAgent(gemini_client=gemini_client, redis_client=redis_client)
 # --- FastAPI App ---
 app = FastAPI(title=API_TITLE, version=API_VERSION)
 
+# --- Tracing Initialization ---
+# Middleware must be added before application startup.
+if config.tracing.enabled:
+    setup_tracing(config.tracing.service_name, config.tracing.otlp_endpoint)
+    # Instrument FastAPI (must be done before startup to attach middleware)
+    FastAPIInstrumentor.instrument_app(app)
+    RedisInstrumentor().instrument()
+    PymongoInstrumentor().instrument()
+    logger.info("OpenTelemetry instrumentation enabled.")
+
 # --- Include Modular Routers (SOLID-Compliant) ---
 app.include_router(health_router)
 app.include_router(auth_router)
@@ -112,20 +122,7 @@ async def startup_event():
     """Initialize database connections and tracing on startup."""
     logger.info("Starting up CareerPilot API...")
     
-    # Initialize Tracing
-    if config.tracing.enabled:
-        setup_tracing(config.tracing.service_name, config.tracing.otlp_endpoint)
-        
-        # Instrument FastAPI
-        FastAPIInstrumentor.instrument_app(app)
-        
-        # Instrument Redis
-        RedisInstrumentor().instrument()
-        
-        # Instrument Mongo
-        PymongoInstrumentor().instrument()
-        
-        logger.info("OpenTelemetry instrumentation enabled.")
+
 
     mongo_handler.connect()
     
