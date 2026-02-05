@@ -74,11 +74,11 @@ agent = CareerPilotAgent(gemini_client=gemini_client, redis_client=redis_client)
 app = FastAPI(title=API_TITLE, version=API_VERSION)
 
 # --- Include Modular Routers (SOLID-Compliant) ---
-app.include_router(health_router.router)
-app.include_router(auth_router.router)
-app.include_router(analysis_router.router)
-app.include_router(payment_router.router)
-app.include_router(rag_router.router)
+app.include_router(health_router)
+app.include_router(auth_router)
+app.include_router(analysis_router)
+app.include_router(payment_router)
+app.include_router(rag_router)
 
 # --- Include Legacy Routers ---
 app.include_router(mock_router)
