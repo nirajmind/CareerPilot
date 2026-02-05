@@ -68,7 +68,7 @@ def login(username, password):
         
         # Step 2: Get user details from a secure endpoint
         headers = {"Authorization": f"Bearer {token}"}
-        user_response = requests.get(f"{BACKEND_URL}/users/me", headers=headers)
+        user_response = requests.get(f"{BACKEND_URL}/auth/me", headers=headers)
 
         if user_response.status_code == 200:
             st.session_state.user = user_response.json()
