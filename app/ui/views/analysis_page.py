@@ -69,12 +69,37 @@ def render_analysis_page():
         # ----------------------------------------- # 
         # 🔹 Main Analysis Page Content # 
         # ----------------------------------------- 
-    st.header("CareerPilot Analysis") 
+    st.header("CareerPilot Analysis")
+
+    # --- Quota Check ---
+    from .analysis_page_helpers import get_account_status
+    status = get_account_status()
+    quota_reached = False
+    
+    if status:
+        q = status["quota"]
+        usage, limit = q["usage_today"], q["daily_limit"]
+        remaining = q["remaining"]
+        
+        # Display as a metric
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.info(f"**Daily Quota:** {usage}/{limit} used")
+            if usage >= limit:
+                st.error("⚠️ Daily limit reached. Upgrade to Premium for more!")
+                quota_reached = True
+        with col2:
+             if status["tier"] == "free":
+                 st.caption("Free Tier")
+             else:
+                 st.caption("⭐ Premium")
+    # -------------------
+
     if "resume_text" not in st.session_state or "jd_text" not in st.session_state: 
         st.warning("Please provide both resume and job description first.") 
         return
 
-    if st.button("Run Analysis"):
+    if st.button("Run Analysis", disabled=quota_reached):
         with st.spinner("Analyzing..."):
             try:
                 result = call_analysis_api(
