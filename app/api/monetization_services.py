@@ -224,7 +224,7 @@ class PaymentService:
                     'price': self.config.stripe.stripe_price_id_premium,
                     'quantity': 1,
                 }],
-                mode='payment',
+                mode='subscription',
                 success_url=f"https://careerpilot.chickenkiller.com/payment-success?session_id={{CHECKOUT_SESSION_ID}}",
                 cancel_url=f"https://careerpilot.chickenkiller.com/payment-cancel",
                 client_reference_id=username,
