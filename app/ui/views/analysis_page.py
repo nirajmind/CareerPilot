@@ -78,7 +78,7 @@ def render_analysis_page():
     
     if status:
         q = status["quota"]
-        usage, limit = q["usage_today"], q["daily_limit"]
+        usage, limit = q["usage"], q["limit"]
         remaining = q["remaining"]
         
         # Display as a metric
