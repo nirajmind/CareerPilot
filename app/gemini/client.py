@@ -71,6 +71,11 @@ class GeminiClient:
                 headers=headers
             )
 
+            if result.status_code != 200:
+                logger.error(f"[Gemini:{operation}] Failed with status {result.status_code}")
+                logger.error(f"[Gemini:{operation}] Response body: {result.text}")
+                result.raise_for_status()
+
             logger.info(
                 f"[Gemini] Success {operation} cid={cid} "
                 f"duration={int((time.time()-start)*1000)}ms"

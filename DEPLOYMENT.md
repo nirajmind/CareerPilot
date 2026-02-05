@@ -202,8 +202,8 @@ careerpilot.chickenkiller.com {
     # Caddy will automatically handle HTTPS
     reverse_proxy localhost:30001
 
-    # Jaeger Monitor (Path-based to avoid DNS issues)
-    handle_path /monitor* {
+    # Jaeger Monitor (Path-based)
+    handle /monitor* {
         reverse_proxy localhost:30002
     }
 }
