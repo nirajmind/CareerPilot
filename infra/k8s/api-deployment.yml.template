@@ -110,7 +110,7 @@ spec:
         - name: TRACING_ENABLED
           value: "true"
         - name: OTLP_ENDPOINT
-          value: "http://jaeger-collector.careerpilot:4318"      
+          value: "http://jaeger-collector.careerpilot:4318/v1/traces"      
 
 ---
 apiVersion: v1
