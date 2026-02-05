@@ -17,7 +17,7 @@ load_dotenv(ENV_PATH)
 
 class SecuritySettings(BaseModel):
     """Security configuration."""
-    model_config = ConfigDict(frozen=False)
+    model_config = ConfigDict(frozen=False, populate_by_name=True)
     
     jwt_secret_key: str = Field(..., alias="JWT_SECRET_KEY")
     jwt_algorithm: str = Field(default="HS256")
@@ -46,7 +46,7 @@ class DatabaseSettings(BaseModel):
 
 class EmailSettings(BaseModel):
     """Email (Gmail SMTP) configuration."""
-    model_config = ConfigDict(frozen=False)
+    model_config = ConfigDict(frozen=False, populate_by_name=True)
     
     smtp_host: str = Field(default="smtp.gmail.com")
     smtp_port: int = Field(default=587)
@@ -59,7 +59,7 @@ class EmailSettings(BaseModel):
 
 class StripeSettings(BaseModel):
     """Stripe payment configuration."""
-    model_config = ConfigDict(frozen=False)
+    model_config = ConfigDict(frozen=False, populate_by_name=True)
     
     stripe_api_key: str = Field(..., alias="STRIPE_API_KEY")
     stripe_webhook_secret: str = Field(..., alias="STRIPE_WEBHOOK_SECRET")
@@ -85,7 +85,7 @@ class APISettings(BaseModel):
 
 class GeminiSettings(BaseModel):
     """Gemini API configuration."""
-    model_config = ConfigDict(frozen=False)
+    model_config = ConfigDict(frozen=False, populate_by_name=True)
     
     gemini_api_key: str = Field(..., alias="GEMINI_API_KEY")
     gemini_proxy_url: str = Field(..., alias="GEMINI_PROXY_URL")
