@@ -201,10 +201,17 @@ On your VM, add the following block to your `Caddyfile` and reload Caddy's confi
 careerpilot.chickenkiller.com {
     # Caddy will automatically handle HTTPS
     reverse_proxy localhost:30001
+
+    # Jaeger Monitor (Path-based to avoid DNS issues)
+    handle_path /monitor* {
+        reverse_proxy localhost:30002
+    }
 }
 ```
 
-This configuration will proxy requests from your domain to the `NodePort` of your Streamlit UI service.
+This configuration proxies:
+- `/monitor` -> Jaeger UI
+- Everything else -> Streamlit UI
 
 ---
 

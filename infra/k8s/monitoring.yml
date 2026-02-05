@@ -36,6 +36,9 @@ spec:
         # Retention: 720h = 30 days. Auto-discards older data.
         - name: BADGER_SPAN_STORE_TTL
           value: "720h"
+        # Base path for UI (for reverse proxying behind /monitor)
+        - name: QUERY_BASE_PATH
+          value: "/monitor"
         resources:
           requests:
             cpu: "100m"
