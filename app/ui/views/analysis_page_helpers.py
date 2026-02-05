@@ -21,3 +21,15 @@ def call_analysis_api(resume_text, jd_text):
         raise Exception(f"Backend error: {detail}")
 
     return data
+
+def get_account_status():
+    """Fetch current user's account status including quota."""
+    url = f"{BACKEND_URL}/auth/account-status"
+    headers = { "Authorization": f"Bearer {st.session_state.get('token', '')}" }
+    try:
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            return response.json()
+    except Exception:
+        pass
+    return None
