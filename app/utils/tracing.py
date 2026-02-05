@@ -6,7 +6,7 @@ from opentelemetry import trace
 from opentelemetry.sdk.resources import Resource, SERVICE_NAME
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from app.utils.logger import setup_logger
 
 logger = setup_logger()
@@ -23,9 +23,9 @@ def setup_tracing(service_name: str, otlp_endpoint: str):
 
     provider = TracerProvider(resource=resource)
     
-    # Configure OTLP Exporter (gRPC)
+    # Configure OTLP Exporter (HTTP)
     try:
-        exporter = OTLPSpanExporter(endpoint=otlp_endpoint, insecure=True)
+        exporter = OTLPSpanExporter(endpoint=otlp_endpoint)
         processor = BatchSpanProcessor(exporter)
         provider.add_span_processor(processor)
         
