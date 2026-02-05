@@ -76,20 +76,25 @@ def render_analysis_page():
 
     if st.button("Run Analysis"):
         with st.spinner("Analyzing..."):
-            result = call_analysis_api(
-                st.session_state["resume_text"],
-                st.session_state["jd_text"]
-            )
+            try:
+                result = call_analysis_api(
+                    st.session_state["resume_text"],
+                    st.session_state["jd_text"]
+                )
 
-            # Store analysis result
-            result["resume_text"] = st.session_state["resume_text"]
-            result["jd_text"] = st.session_state["jd_text"]
-            st.session_state["analysis_result"] = result
+                # Store analysis result
+                result["resume_text"] = st.session_state["resume_text"]
+                result["jd_text"] = st.session_state["jd_text"]
+                st.session_state["analysis_result"] = result
 
-            # Save to DB
-            save_analysis_to_db(result)
+                # Save to DB
+                save_analysis_to_db(result)
 
-            st.success("Analysis complete!")
+                st.success("Analysis complete!")
+            except Exception as e:
+                st.error(str(e).replace("Backend error: ", ""))
+                if "Quota exceeded" in str(e):
+                     st.info("💡 **Tip:** Upgrade to Premium for 100 analyses/day!")
 
     if "analysis_result" in st.session_state:
         result = st.session_state["analysis_result"]
